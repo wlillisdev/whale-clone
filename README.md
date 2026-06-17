@@ -74,16 +74,50 @@ A strategy is not "real" until it survives all four (all numbers **after costs**
 
 ## Current verdict
 
-> **PENDING REAL-DATA RUN.** The engine, gates, and no-look-ahead guarantee are
-> implemented and unit-tested (`make test`), and the real data path (SEC EDGAR
-> 13F history → OpenFIGI ticker mapping → Yahoo prices) is wired up. The verdict
-> below is filled in by running `make backtest` from an environment with
-> outbound internet (the original build sandbox blocked the data hosts).
->
-> Pre-committed managers: Berkshire Hathaway, Gates Foundation Trust, Pershing
-> Square. Window: 2014–2024, most recent 30% reserved out-of-sample.
->
-> _Paste the verdict box from `make backtest` here once it runs._
+**FINAL VERDICT: FAIL — does not clear the gates.** Copying these three
+low-turnover managers over 2014–2024 *modestly beat* SPY on raw return, but the
+edge is **not statistically distinguishable from zero after costs**, so it
+cannot be called a proven edge.
+
+Run on real data (SEC EDGAR 13F history → OpenFIGI tickers → Yahoo adjusted
+close), pre-committed managers **Berkshire Hathaway, Gates Foundation Trust,
+Pershing Square**, 2014–2024:
+
+```
+Strategy CAGR +14.15% | Benchmark CAGR +13.30% | Excess +0.85%
+Strategy Sharpe 0.84  | Benchmark Sharpe 0.81  | Avg turnover/rebalance 10.1% | Total costs 0.74%
+----------------------------------------------------------------
+[FAIL] Cost-adjusted expectancy
+        Mean daily excess +0.0032%; 95% CI [-0.0094%, +0.0158%]; lower bound <= 0.
+[FAIL] Walk-forward / out-of-sample
+        2/3 windows beat benchmark; max single-window share 70% (at the limit).
+[PASS] Robustness (parameter plateau)
+        5/6 variants beat benchmark (only equal-weighting was negative, -0.30%).
+[PASS] Benchmark-beating (CAGR & Sharpe)
+        CAGR +14.15% vs +13.30%; Sharpe 0.84 vs 0.81 — both beat.
+----------------------------------------------------------------
+FINAL VERDICT: FAIL — does not clear the gates
+```
+
+**How to read this.** The strategy clears the *outperformance* gates (it beat
+SPY on CAGR and Sharpe, and the result is a robustness plateau, not a spike).
+It fails the two gates that test whether the edge is *real*: the bootstrap CI on
+per-period excess return straddles zero, and the outperformance is concentrated
+rather than evenly earned across time. This is exactly the brief's anticipated
+honest outcome — *"might match or modestly beat the index with lower turnover;
+not a get-rich-quick machine."* A ~0.85%/yr edge that we cannot statistically
+distinguish from noise is **not** a green light.
+
+**Data caveats (stated, not hidden):**
+- Holdings coverage by reported $ value: Berkshire 96.8%, Gates 99.9%, Pershing
+  96.3%. Unmapped lines are mostly options/notes and a few foreign listings.
+- A handful of **delisted / acquired** names (e.g. TWTR, VIAB, TMK) have no
+  history on free Yahoo and are dropped. These are disproportionately
+  merger-arb / acquired positions, so the real strategy's exposure to takeout
+  outcomes is under-represented — a known limitation of free price data, not the
+  engine.
+- Numbers are net of a 7.5 bps/side slippage model; results are reproducible
+  (seeded bootstrap). Re-run with `make backtest` to regenerate.
 
 ## Architecture
 
