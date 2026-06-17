@@ -100,7 +100,8 @@ def _stooq_panel(tickers: list[str], start: date, end: date) -> pd.DataFrame:
 
 
 def _stooq_one(ticker: str, start: date, end: date) -> pd.Series | None:
-    symbol = f"{ticker.lower()}.us"
+    # Stooq uses '-' for share classes (BRK-B), not '/'.
+    symbol = f"{ticker.lower().replace('/', '-').replace('.', '-')}.us"
     url = f"https://stooq.com/q/d/l/?s={symbol}&i=d&d1={start:%Y%m%d}&d2={end:%Y%m%d}"
     resp = requests.get(url, headers=_HEADERS, timeout=_TIMEOUT)
     resp.raise_for_status()
@@ -137,8 +138,10 @@ def _yahoo_panel(tickers: list[str], start: date, end: date) -> pd.DataFrame:
 def _yahoo_one(ticker: str, start: date, end: date) -> pd.Series | None:
     p1 = int(pd.Timestamp(start).timestamp())
     p2 = int(pd.Timestamp(end).timestamp())
+    # Yahoo uses '-' for share classes (BRK-B), not '/' as 13F/OpenFIGI report it.
+    yf_symbol = ticker.replace("/", "-").replace(".", "-")
     url = (
-        f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{yf_symbol}"
         f"?period1={p1}&period2={p2}&interval=1d&events=div%2Csplit"
     )
     resp = requests.get(url, headers=_HEADERS, timeout=_TIMEOUT)
@@ -154,6 +157,7 @@ def _yahoo_one(ticker: str, start: date, end: date) -> pd.Series | None:
         return None
     closes = adj[0].get("adjclose")
     idx = pd.to_datetime(ts, unit="s").normalize()
+    # Keep the original ticker as the series name so it matches the holdings.
     return pd.Series(closes, index=idx, name=ticker).astype(float).dropna()
 
 

@@ -156,7 +156,21 @@ def _edgar_all(
             mapped = raw.dropna(subset=["ticker"])
             dropped = len(raw) - len(mapped)
             if dropped:
-                _warn(f"  dropped {dropped} unmapped row(s) (no ticker for the CUSIP)")
+                # Coverage by *value* is what matters, not row count: dropping a
+                # handful of tiny option/bond lines is harmless; dropping a big
+                # equity position is not.
+                total_val = float(raw["value"].sum())
+                kept_val = float(mapped["value"].sum())
+                cov = kept_val / total_val if total_val > 0 else 0.0
+                _warn(
+                    f"  dropped {dropped} unmapped row(s); "
+                    f"ticker coverage = {cov:.1%} of reported $ value"
+                )
+                if cov < 0.95:
+                    _warn(
+                        f"  WARNING: low coverage for {info.name} — the backtest "
+                        "for this manager may be distorted by missing positions"
+                    )
             frames.append(mapped.loc[:, HOLDINGS_COLUMNS])
         except Exception as exc:  # one manager failing must not kill the rest
             _warn(f"  ERROR for manager {m!r}: {exc}; skipping")
@@ -289,38 +303,70 @@ def _parse_info_table_xml(xml_bytes: bytes) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["cusip", "value"])
 
 
+def _pick_ticker(data: list[dict[str, str]] | None) -> str | None:
+    """Choose the best ticker from OpenFIGI candidates, preferring equities."""
+    if not data:
+        return None
+    for d in data:
+        if d.get("ticker") and d.get("marketSector") == "Equity":
+            return d["ticker"]
+    return data[0].get("ticker")
+
+
+def _openfigi_post(jobs: list[dict[str, str]], headers: dict[str, str]) -> list[dict[str, object]]:
+    for attempt in range(6):
+        resp = requests.post(
+            "https://api.openfigi.com/v3/mapping", json=jobs, headers=headers, timeout=_TIMEOUT
+        )
+        if resp.status_code == 429:  # rate limited — back off and retry
+            time.sleep(_OPENFIGI_PAUSE * (attempt + 2))
+            continue
+        resp.raise_for_status()
+        result: list[dict[str, object]] = resp.json()
+        return result
+    raise RuntimeError("OpenFIGI rate limit kept failing")
+
+
 def _map_cusips(cusips: list[str], *, api_key: str | None = None) -> dict[str, str | None]:
-    """Map CUSIPs to US tickers via OpenFIGI (batched, rate-limited)."""
+    """Map CUSIPs to tickers via OpenFIGI (batched, rate-limited).
+
+    Two passes: first constrained to US exchanges (the common case), then any
+    misses are retried without the exchange filter. This recovers names the
+    strict filter drops while still preferring US equity tickers.
+    """
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["X-OPENFIGI-APIKEY"] = api_key
     batch_size = 100 if api_key else 10
     result: dict[str, str | None] = {}
-    for start_i in range(0, len(cusips), batch_size):
-        batch = cusips[start_i : start_i + batch_size]
-        payload = [{"idType": "ID_CUSIP", "idValue": c, "exchCode": "US"} for c in batch]
-        for attempt in range(5):
-            resp = requests.post(
-                "https://api.openfigi.com/v3/mapping",
-                json=payload,
-                headers=headers,
-                timeout=_TIMEOUT,
-            )
-            if resp.status_code == 429:  # rate limited — back off
-                time.sleep(_OPENFIGI_PAUSE * (attempt + 2))
-                continue
-            resp.raise_for_status()
+    misses = list(cusips)
+
+    for extra in ({"exchCode": "US"}, {}):  # pass 1: US only; pass 2: unconstrained
+        if not misses:
             break
-        else:
-            _warn("  OpenFIGI rate limit kept failing; leaving remaining CUSIPs unmapped")
-            for c in batch:
-                result[c] = None
-            continue
-        for c, entry in zip(batch, resp.json(), strict=False):
-            data = entry.get("data") if isinstance(entry, dict) else None
-            result[c] = data[0].get("ticker") if data else None
-        if not api_key:
-            time.sleep(_OPENFIGI_PAUSE)
+        still_missing: list[str] = []
+        for start_i in range(0, len(misses), batch_size):
+            batch = misses[start_i : start_i + batch_size]
+            jobs = [{"idType": "ID_CUSIP", "idValue": c, **extra} for c in batch]
+            try:
+                entries = _openfigi_post(jobs, headers)
+            except RuntimeError:
+                _warn("  OpenFIGI rate limit kept failing; leaving remaining CUSIPs unmapped")
+                still_missing.extend(batch)
+                continue
+            for c, entry in zip(batch, entries, strict=False):
+                data = entry.get("data") if isinstance(entry, dict) else None
+                ticker = _pick_ticker(data)  # type: ignore[arg-type]
+                if ticker:
+                    result[c] = ticker
+                else:
+                    still_missing.append(c)
+            if not api_key:
+                time.sleep(_OPENFIGI_PAUSE)
+        misses = still_missing
+
+    for c in misses:  # genuinely unmappable (options, bonds, defunct CUSIPs)
+        result[c] = None
     return result
 
 

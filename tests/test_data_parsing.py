@@ -8,6 +8,7 @@ from whale_clone.data.holdings import (
     MANAGER_REGISTRY,
     _demo_holdings,
     _parse_info_table_xml,
+    _pick_ticker,
     _resolve,
     parse_dataroma_holdings,
 )
@@ -52,6 +53,18 @@ def test_resolve_registry_key_and_raw_cik():
     # A raw numeric CIK is accepted and zero-padded.
     assert _resolve("1067983").cik == "0001067983"
     assert "berkshire" in MANAGER_REGISTRY
+
+
+def test_pick_ticker_prefers_equity():
+    data = [
+        {"ticker": "XYZW", "marketSector": "Corp"},  # a bond line
+        {"ticker": "XYZ", "marketSector": "Equity"},  # the common stock
+    ]
+    assert _pick_ticker(data) == "XYZ"
+    # Falls back to the first candidate when none are tagged Equity.
+    assert _pick_ticker([{"ticker": "ABC", "marketSector": "Corp"}]) == "ABC"
+    assert _pick_ticker(None) is None
+    assert _pick_ticker([]) is None
 
 
 def test_resolve_unknown_raises():
