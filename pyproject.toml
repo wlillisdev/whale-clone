@@ -31,6 +31,7 @@ dev = [
 
 [project.scripts]
 whale-clone = "whale_clone.__main__:main"
+whale-gold = "whale_clone.gold:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/whale_clone"]

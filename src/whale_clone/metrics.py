@@ -91,3 +91,38 @@ def bootstrap_mean_ci(
     lower = float(np.quantile(means, alpha / 2.0))
     upper = float(np.quantile(means, 1.0 - alpha / 2.0))
     return BootstrapCI(float(data.mean()), lower, upper, confidence)
+
+
+def block_bootstrap_mean_ci(
+    sample: pd.Series,
+    *,
+    block_len: int = 21,
+    iterations: int = 5000,
+    confidence: float = 0.95,
+    seed: int = 1234,
+) -> BootstrapCI:
+    """Moving-block bootstrap CI for the mean — for autocorrelated series.
+
+    A long/flat timer holds the same position for weeks, so its daily excess
+    returns are strongly autocorrelated and clustered. The IID bootstrap then
+    badly *understates* the CI width and waves through noise. Resampling
+    contiguous blocks of length ``block_len`` (roughly the holding period)
+    preserves that dependence, giving an honest interval.
+    """
+    data = sample.dropna().to_numpy(dtype=float)
+    n = data.size
+    if n < 2:
+        return BootstrapCI(float("nan"), float("nan"), float("nan"), confidence)
+    block_len = max(1, min(block_len, n))
+    n_blocks = int(np.ceil(n / block_len))
+    max_start = n - block_len
+    rng = np.random.default_rng(seed)
+    means = np.empty(iterations, dtype=float)
+    for i in range(iterations):
+        starts = rng.integers(0, max_start + 1, size=n_blocks)
+        sampled = np.concatenate([data[s : s + block_len] for s in starts])[:n]
+        means[i] = sampled.mean()
+    alpha = 1.0 - confidence
+    lower = float(np.quantile(means, alpha / 2.0))
+    upper = float(np.quantile(means, 1.0 - alpha / 2.0))
+    return BootstrapCI(float(data.mean()), lower, upper, confidence)

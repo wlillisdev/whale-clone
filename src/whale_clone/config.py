@@ -75,6 +75,17 @@ class Settings(BaseSettings):
     # return must stay under this fraction for the walk-forward gate to pass.
     max_single_window_share: float = 0.70
 
+    # --- Gold timing strategy (pre-committed v1) ---------------------------
+    # v1: 12-month time-series momentum on GLD, long/flat, monthly rebalance,
+    # benchmarked against buy-and-hold GLD. Chosen before seeing results; the
+    # robustness gate varies the lookback to map (not exploit) sensitivity.
+    gold_instrument: str = "GLD"
+    gold_signal: str = "momentum"  # "momentum" | "sma"
+    gold_lookback: int = 252  # 12 months (momentum) or SMA window
+    gold_allow_short: bool = False  # long/flat only in v1 (gold drifts up)
+    gold_slippage_bps: float = 5.0  # per side; ETF round-trip ~ a few bps
+    gold_block_bootstrap_len: int = 0  # 0 = auto (≈ average holding period)
+
     # --- Data / engine ------------------------------------------------------
     price_source: str = "yahoo"  # "yahoo" | "stooq" | "demo" (yahoo is sturdiest)
     holdings_source: str = "edgar"  # "edgar" (authoritative) | "dataroma" | "demo"
