@@ -123,6 +123,34 @@ PASS.
 - Numbers are net of a 7.5 bps/side slippage model; results are reproducible
   (seeded bootstrap). Re-run with `make backtest` to regenerate.
 
+## Gold timing verdict (v2)
+
+**FINAL VERDICT: FAIL — decisively. Timing gold was strictly worse than holding
+it.** A pre-committed 12-month time-series momentum signal on GLD (long/flat,
+monthly, 5 bps/side), benchmarked against buy-and-hold GLD over 2014–2024:
+
+```
+Strategy CAGR +2.30% | Buy-and-hold GLD +7.07% | Excess -4.77%
+Strategy Sharpe 0.25 | Benchmark Sharpe 0.56   | Time-in-market 57% | 18 trades
+----------------------------------------------------------------
+[FAIL] Cost-adjusted expectancy (block bootstrap)
+        Mean daily excess -0.0197%; 95% CI [-0.0419%, -0.0029%] — entirely below 0.
+[FAIL] Walk-forward            0/3 windows beat buy-and-hold.
+[FAIL] Robustness (lookback)   0/5 lookbacks beat (126..378 days all negative).
+[FAIL] Benchmark-beating       CAGR 2.30% vs 7.07% and Sharpe 0.25 vs 0.56 — both lose.
+----------------------------------------------------------------
+FINAL VERDICT: FAIL — does not clear the gates
+```
+
+Run with `python -m whale_clone.gold`. This is a *clean* fail (unlike the 13F
+near-miss): the timer underperforms at **every** lookback, so it is a robust
+negative, not an unlucky configuration. The cause is visible in the
+diagnostics — being flat ~43% of the time made it miss gold's strong 2019–20 and
+2024 runs while paying costs. The honest lesson, twice over: **a simple
+buy-and-hold benchmark is hard to beat after costs.** The expectancy gate here
+uses a *block* bootstrap, because a low-turnover timer's daily returns are
+autocorrelated and the IID bootstrap would overstate confidence.
+
 ## Architecture
 
 ```
@@ -134,10 +162,13 @@ src/whale_clone/
 ├── portfolio.py    # holdings -> capped target weights (pure)
 ├── costs.py        # commission + slippage on turnover (pure)
 ├── backtest.py     # quarterly rebalance loop on filing dates, net of costs (pure)
-├── metrics.py      # CAGR, Sharpe, drawdown, bootstrap CI (pure)
+├── metrics.py      # CAGR, Sharpe, drawdown, IID + block bootstrap CI (pure)
 ├── gates.py        # the 4 gates -> verdict (pure given data)
 ├── store.py        # Parquet cache (system of record)
-└── pipeline.py     # the only IO<->engine glue
+├── pipeline.py     # 13F clone: the only IO<->engine glue
+├── signals.py      # gold: momentum/SMA signals + causal monthly targets (pure)
+├── signal_backtest.py # gold: single-asset long/flat loop, cash earns rf (pure)
+└── gold.py         # gold timing pipeline + adapted gates (block bootstrap)
 ```
 
 The strategy logic is **pure functions** with no IO, so it is unit-testable with
