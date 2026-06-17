@@ -1,0 +1,41 @@
+"""On-disk cache for holdings and prices.
+
+Parquet is the system of record (brief, section 6) — never loose CSVs. The
+cache is keyed by a stable name so a second run is offline and reproducible.
+CSV is offered only as a human-readable export.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+
+
+class Store:
+    def __init__(self, cache_dir: str | Path = ".cache") -> None:
+        self.root = Path(cache_dir)
+        self.root.mkdir(parents=True, exist_ok=True)
+
+    def _path(self, name: str) -> Path:
+        return self.root / f"{name}.parquet"
+
+    def has(self, name: str) -> bool:
+        return self._path(name).exists()
+
+    def save(self, name: str, df: pd.DataFrame) -> Path:
+        path = self._path(name)
+        df.to_parquet(path)
+        return path
+
+    def load(self, name: str) -> pd.DataFrame:
+        path = self._path(name)
+        if not path.exists():
+            raise FileNotFoundError(f"no cached frame named {name!r} at {path}")
+        return pd.read_parquet(path)
+
+    def export_csv(self, df: pd.DataFrame, path: str | Path) -> Path:
+        out = Path(path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(out, index=True)
+        return out
