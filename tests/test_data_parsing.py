@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from datetime import date
 
-from whale_clone.data.holdings import _demo_holdings, parse_dataroma_holdings
+from whale_clone.data.holdings import (
+    MANAGER_REGISTRY,
+    _demo_holdings,
+    _parse_info_table_xml,
+    _resolve,
+    parse_dataroma_holdings,
+)
 from whale_clone.data.prices import _demo_prices
 
 
@@ -26,6 +32,35 @@ def test_demo_holdings_are_low_turnover_and_have_filing_lag():
     assert (df["filing_date"].dt.day > 1).all()
     # Multiple quarters present.
     assert df["period"].nunique() >= 8
+
+
+def test_parse_edgar_info_table_namespace_agnostic(fixtures_dir):
+    xml_bytes = (fixtures_dir / "edgar_infotable.xml").read_bytes()
+    df = _parse_info_table_xml(xml_bytes)
+    assert list(df.columns) == ["cusip", "value"]
+    assert len(df) == 2
+    # CUSIPs parsed despite the XML namespace prefixes.
+    assert "037833100" in set(df["cusip"])
+    assert "060505104" in set(df["cusip"])
+    # Values are positive floats.
+    assert (df["value"] > 0).all()
+    assert df.set_index("cusip").loc["037833100", "value"] == 174348000.0
+
+
+def test_resolve_registry_key_and_raw_cik():
+    assert _resolve("berkshire").cik == "0001067983"
+    # A raw numeric CIK is accepted and zero-padded.
+    assert _resolve("1067983").cik == "0001067983"
+    assert "berkshire" in MANAGER_REGISTRY
+
+
+def test_resolve_unknown_raises():
+    try:
+        _resolve("not_a_manager")
+    except KeyError as e:
+        assert "unknown manager" in str(e)
+    else:  # pragma: no cover
+        raise AssertionError("expected KeyError")
 
 
 def test_demo_prices_shape_and_positivity():

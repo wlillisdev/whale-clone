@@ -27,7 +27,9 @@ def main(argv: list[str] | None = None) -> int:
         "--price-source", choices=["stooq", "yahoo", "demo"], help="Override price source."
     )
     parser.add_argument(
-        "--holdings-source", choices=["dataroma", "demo"], help="Override holdings source."
+        "--holdings-source",
+        choices=["edgar", "dataroma", "demo"],
+        help="Override holdings source.",
     )
     args = parser.parse_args(argv)
 

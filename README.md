@@ -44,11 +44,16 @@ a PASS/FAIL verdict against the four validation gates.
 
 ### Data sources
 
-| Layer     | Source                                   | Notes |
-|-----------|------------------------------------------|-------|
-| Prices    | Stooq (default) / Yahoo                   | daily adjusted close; SPY benchmark |
-| Holdings  | Dataroma (snapshot) / SEC EDGAR (history) | EDGAR gives exact **filing dates** |
-| Offline   | `--demo` synthetic generator              | deterministic; for CI / sandboxes |
+| Layer     | Source                                    | Notes |
+|-----------|-------------------------------------------|-------|
+| Prices    | Yahoo (default) / Stooq                    | daily adjusted close; SPY benchmark. Dead/delisted tickers are skipped, not fatal. |
+| Holdings  | **SEC EDGAR (default)** / Dataroma          | EDGAR gives the real multi-year history with exact **filing dates**; CUSIPs are mapped to tickers via OpenFIGI (cached). Dataroma is a current-snapshot-only fallback. |
+| Offline   | `--demo` synthetic generator               | deterministic; for CI / sandboxes |
+
+> **First EDGAR run is slow** (a few minutes): it downloads every 13F filing for
+> each manager and maps CUSIPs→tickers through OpenFIGI's free tier (~25 req/min).
+> Everything is cached to `.cache/` as Parquet/JSON, so subsequent runs are fast
+> and offline. Set `WHALE_OPENFIGI_API_KEY` to raise the OpenFIGI rate limit.
 
 **Honesty rule on dates:** the backtest acts on the **actual 13F filing date**
 (when data became public), never the quarter-end. A test
@@ -70,15 +75,15 @@ A strategy is not "real" until it survives all four (all numbers **after costs**
 ## Current verdict
 
 > **PENDING REAL-DATA RUN.** The engine, gates, and no-look-ahead guarantee are
-> implemented and unit-tested (see `make test`). This repository was built in a
-> sandboxed environment whose egress proxy blocks the market-data hosts
-> (Stooq / Yahoo / Dataroma / SEC all return HTTP 403), so the *empirical*
-> verdict on real holdings has not yet been produced here.
+> implemented and unit-tested (`make test`), and the real data path (SEC EDGAR
+> 13F history → OpenFIGI ticker mapping → Yahoo prices) is wired up. The verdict
+> below is filled in by running `make backtest` from an environment with
+> outbound internet (the original build sandbox blocked the data hosts).
 >
-> Run `make backtest` from an environment with network access to populate this
-> section with the real numbers (strategy vs SPY CAGR, Sharpe, and the four
-> gates' PASS/FAIL). The offline `make demo` run confirms the full pipeline
-> executes end to end.
+> Pre-committed managers: Berkshire Hathaway, Gates Foundation Trust, Pershing
+> Square. Window: 2014–2024, most recent 30% reserved out-of-sample.
+>
+> _Paste the verdict box from `make backtest` here once it runs._
 
 ## Architecture
 

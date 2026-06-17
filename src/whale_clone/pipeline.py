@@ -61,6 +61,7 @@ def load_data(settings: Settings, *, refresh: bool = False) -> PipelineData:
         store=store,
         refresh=refresh,
         seed=settings.random_seed,
+        openfigi_key=settings.openfigi_api_key,
     )
     tickers = sorted(holdings["ticker"].unique())
     prices = load_prices(

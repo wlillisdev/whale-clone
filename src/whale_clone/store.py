@@ -7,7 +7,9 @@ CSV is offered only as a human-readable export.
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -33,6 +35,21 @@ class Store:
         if not path.exists():
             raise FileNotFoundError(f"no cached frame named {name!r} at {path}")
         return pd.read_parquet(path)
+
+    # --- JSON cache (e.g. CUSIP -> ticker map) ------------------------------
+    def _json_path(self, name: str) -> Path:
+        return self.root / f"{name}.json"
+
+    def load_json(self, name: str, default: Any = None) -> Any:
+        path = self._json_path(name)
+        if not path.exists():
+            return default
+        return json.loads(path.read_text())
+
+    def save_json(self, name: str, obj: Any) -> Path:
+        path = self._json_path(name)
+        path.write_text(json.dumps(obj, indent=2, sort_keys=True))
+        return path
 
     def export_csv(self, df: pd.DataFrame, path: str | Path) -> Path:
         out = Path(path)

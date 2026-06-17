@@ -32,12 +32,14 @@ class Settings(BaseSettings):
     )
 
     # --- Managers (small, concentrated, low-turnover value) -----------------
-    # Dataroma short codes. Pre-commit the list; do not cherry-pick winners.
-    #   BRK = Berkshire Hathaway (Warren Buffett)
-    #   psc = Pershing Square (Bill Ackman)
-    #   AM  = Akre Capital (Chuck Akre)
-    #   oc  = Oakmark Select / Bill Nygren  (placeholder; verify code at fetch)
-    managers: list[str] = Field(default_factory=lambda: ["BRK", "psc", "AM"])
+    # Registry keys (see data/holdings.py MANAGER_REGISTRY) or raw SEC CIKs.
+    # Pre-commit the list; do not cherry-pick winners.
+    #   berkshire        = Berkshire Hathaway (Warren Buffett)   — the documented case
+    #   gates_foundation = Gates Foundation Trust                — very low turnover
+    #   pershing_square  = Pershing Square (Bill Ackman)         — concentrated
+    managers: list[str] = Field(
+        default_factory=lambda: ["berkshire", "gates_foundation", "pershing_square"]
+    )
 
     # --- Rebalance + weighting ---------------------------------------------
     # We act on the actual 13F *filing date*, never the quarter-end. Acting on
@@ -69,8 +71,11 @@ class Settings(BaseSettings):
     max_single_window_share: float = 0.70
 
     # --- Data / engine ------------------------------------------------------
-    price_source: str = "stooq"  # "stooq" | "yahoo" | "demo"
-    holdings_source: str = "dataroma"  # "dataroma" | "demo"
+    price_source: str = "yahoo"  # "yahoo" | "stooq" | "demo" (yahoo is sturdiest)
+    holdings_source: str = "edgar"  # "edgar" (authoritative) | "dataroma" | "demo"
+    # Optional OpenFIGI API key (CUSIP->ticker). Without it the free tier limit
+    # (~25 req/min) is used; set WHALE_OPENFIGI_API_KEY to go faster.
+    openfigi_api_key: str | None = None
     cache_dir: str = ".cache"
     random_seed: int = 1234
     trading_days_per_year: int = 252
