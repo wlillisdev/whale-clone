@@ -24,6 +24,7 @@ Network: ``edgar`` needs data.sec.gov / www.sec.gov and api.openfigi.com.
 from __future__ import annotations
 
 import io
+import re
 import sys
 import time
 from dataclasses import dataclass
@@ -303,14 +304,40 @@ def _parse_info_table_xml(xml_bytes: bytes) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["cusip", "value"])
 
 
+# A US common-stock symbol: 1-5 letters, optional single-letter share class.
+_US_TICKER = re.compile(r"^[A-Z]{1,5}([./-][A-Z])?$")
+
+
+def _is_us_equity_ticker(ticker: str | None) -> bool:
+    """Reject foreign/derivative junk OpenFIGI returns (e.g. ATVIEUR, HHC*, 0VVB).
+
+    We only want symbols that look like a US-listed common stock, so coverage
+    reflects what we can actually price rather than counting unusable tickers.
+    """
+    if not ticker:
+        return False
+    if ticker.endswith(("EUR", "USD", "GBP", "CHF", "JPY")):
+        return False
+    return bool(_US_TICKER.match(ticker))
+
+
 def _pick_ticker(data: list[dict[str, str]] | None) -> str | None:
-    """Choose the best ticker from OpenFIGI candidates, preferring equities."""
+    """Choose the best US-equity ticker from OpenFIGI candidates.
+
+    Prefer an Equity candidate; only accept symbols that look like a real US
+    listing. Returns None if nothing usable is found (the CUSIP is then dropped
+    rather than pretending it mapped).
+    """
     if not data:
         return None
-    for d in data:
-        if d.get("ticker") and d.get("marketSector") == "Equity":
-            return d["ticker"]
-    return data[0].get("ticker")
+    equities = [d.get("ticker") for d in data if d.get("marketSector") == "Equity"]
+    for t in equities:
+        if _is_us_equity_ticker(t):
+            return t
+    for d in data:  # fall back to any candidate that still looks like a US stock
+        if _is_us_equity_ticker(d.get("ticker")):
+            return d.get("ticker")
+    return None
 
 
 def _openfigi_post(jobs: list[dict[str, str]], headers: dict[str, str]) -> list[dict[str, object]]:

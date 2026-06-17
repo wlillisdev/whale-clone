@@ -55,16 +55,31 @@ def test_resolve_registry_key_and_raw_cik():
     assert "berkshire" in MANAGER_REGISTRY
 
 
-def test_pick_ticker_prefers_equity():
+def test_pick_ticker_prefers_us_equity_and_rejects_junk():
     data = [
-        {"ticker": "XYZW", "marketSector": "Corp"},  # a bond line
-        {"ticker": "XYZ", "marketSector": "Equity"},  # the common stock
+        {"ticker": "ATVIEUR", "marketSector": "Equity"},  # foreign (Frankfurt) listing
+        {"ticker": "ATVI", "marketSector": "Equity"},  # the US common stock
     ]
-    assert _pick_ticker(data) == "XYZ"
-    # Falls back to the first candidate when none are tagged Equity.
+    assert _pick_ticker(data) == "ATVI"
+    # Falls back to a US-looking symbol even if not tagged Equity.
     assert _pick_ticker([{"ticker": "ABC", "marketSector": "Corp"}]) == "ABC"
+    # Pure junk / foreign / derivative tickers are rejected -> None (dropped).
+    assert _pick_ticker([{"ticker": "HHC*", "marketSector": "Equity"}]) is None
+    assert _pick_ticker([{"ticker": "0VVB", "marketSector": "Equity"}]) is None
+    assert _pick_ticker([{"ticker": "TWTRUSD", "marketSector": "Equity"}]) is None
     assert _pick_ticker(None) is None
     assert _pick_ticker([]) is None
+
+
+def test_us_equity_ticker_allows_share_classes():
+    from whale_clone.data.holdings import _is_us_equity_ticker
+
+    assert _is_us_equity_ticker("AAPL")
+    assert _is_us_equity_ticker("BRK/B")
+    assert _is_us_equity_ticker("BF.B")
+    assert not _is_us_equity_ticker("ATVIEUR")
+    assert not _is_us_equity_ticker("LM03")
+    assert not _is_us_equity_ticker("")
 
 
 def test_resolve_unknown_raises():

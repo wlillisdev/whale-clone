@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import io
 import sys
+import time
 from datetime import date
 
 import numpy as np
@@ -27,6 +28,7 @@ from ..store import Store
 
 _HEADERS = {"User-Agent": "whale-clone/0.1 (research; contact via repo)"}
 _TIMEOUT = 30
+_YAHOO_PAUSE = 0.3  # gentle pacing to avoid throttle-induced 404s on bursts
 
 
 def _warn(msg: str) -> None:
@@ -121,6 +123,7 @@ def _yahoo_panel(tickers: list[str], start: date, end: date) -> pd.DataFrame:
     for t in tickers:
         try:
             s = _yahoo_one(t, start, end)
+            time.sleep(_YAHOO_PAUSE)
         except Exception as exc:  # one bad/delisted ticker must not kill the run
             skipped.append(f"{t} ({exc})")
             continue
