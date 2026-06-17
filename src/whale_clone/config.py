@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     # quarter-end prices is look-ahead bias and fakes an edge.
     max_position_weight: float = 0.25  # cap any single name to avoid one-stock domination
     weighting: str = "value"  # "value" (manager's own $ weights) or "equal"
+    # Concentration: keep only each manager's top-N highest-conviction positions.
+    # The brief's thesis is that the edge lives in a few names; full-book cloning
+    # (top_n=None) already failed, so we pre-commit a "few" value here. The
+    # robustness gate varies N (3/5/8/10) to check this is a plateau, not a spike.
+    top_n_positions: int | None = 5
 
     # --- Costs (all results reported NET) ----------------------------------
     commission_bps: float = 0.0  # modern brokers ~0

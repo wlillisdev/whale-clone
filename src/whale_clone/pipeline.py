@@ -30,6 +30,7 @@ def backtest_config(settings: Settings) -> BacktestConfig:
         benchmark=settings.benchmark,
         weighting=settings.weighting,
         max_position_weight=settings.max_position_weight,
+        top_n=settings.top_n_positions,
         cost_model=CostModel(
             commission_bps=settings.commission_bps,
             slippage_bps=settings.slippage_bps,

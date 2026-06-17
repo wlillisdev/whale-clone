@@ -187,6 +187,11 @@ def _variations(
     other = "equal" if cfg.weighting == "value" else "value"
     variants.append((f"{other} weighting", holdings, replace(cfg, weighting=other)))
 
+    # Concentration: vary top-N so the edge must hold as a plateau, not one N.
+    for n in (3, 5, 8, 10):
+        if n != cfg.top_n:
+            variants.append((f"top {n}", holdings, replace(cfg, top_n=n)))
+
     # Drop one manager (the alphabetically first), if more than one.
     managers = sorted(holdings["manager"].unique())
     if len(managers) > 1:
