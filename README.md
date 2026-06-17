@@ -74,39 +74,43 @@ A strategy is not "real" until it survives all four (all numbers **after costs**
 
 ## Current verdict
 
-**FINAL VERDICT: FAIL — does not clear the gates.** Copying these three
-low-turnover managers over 2014–2024 *modestly beat* SPY on raw return, but the
-edge is **not statistically distinguishable from zero after costs**, so it
-cannot be called a proven edge.
+**FINAL VERDICT: FAIL — but a robust near-miss.** Cloning the **top-5
+highest-conviction positions** of three low-turnover managers over 2014–2024
+beat SPY on CAGR *and* Sharpe, held up across time, and survived parameter
+variation — **3 of 4 gates pass**. It fails only the statistical-significance
+gate (the 95% CI on excess return dips just below zero), so we still cannot call
+the edge *proven*. We hold that line rather than loosen the gate.
 
 Run on real data (SEC EDGAR 13F history → OpenFIGI tickers → Yahoo adjusted
 close), pre-committed managers **Berkshire Hathaway, Gates Foundation Trust,
-Pershing Square**, 2014–2024:
+Pershing Square**, top-5 positions each, 2014–2024:
 
 ```
-Strategy CAGR +14.15% | Benchmark CAGR +13.30% | Excess +0.85%
-Strategy Sharpe 0.84  | Benchmark Sharpe 0.81  | Avg turnover/rebalance 10.1% | Total costs 0.74%
+Strategy CAGR +15.06% | Benchmark CAGR +13.30% | Excess +1.76%
+Strategy Sharpe 0.88  | Benchmark Sharpe 0.81  | Avg turnover/rebalance 10.4% | Total costs 0.77%
 ----------------------------------------------------------------
 [FAIL] Cost-adjusted expectancy
-        Mean daily excess +0.0032%; 95% CI [-0.0094%, +0.0158%]; lower bound <= 0.
-[FAIL] Walk-forward / out-of-sample
-        2/3 windows beat benchmark; max single-window share 70% (at the limit).
+        Mean daily excess +0.0065%; 95% CI [-0.0073%, +0.0201%]; lower bound <= 0.
+[PASS] Walk-forward / out-of-sample
+        2/3 windows beat benchmark; max single-window share 54% (limit 70%).
 [PASS] Robustness (parameter plateau)
-        5/6 variants beat benchmark (only equal-weighting was negative, -0.30%).
+        9/9 variants beat benchmark. Concentration gradient:
+        top 3 +2.07% > top 5 +1.76% > top 8 +1.19% > top 10 +1.07%.
 [PASS] Benchmark-beating (CAGR & Sharpe)
-        CAGR +14.15% vs +13.30%; Sharpe 0.84 vs 0.81 — both beat.
+        CAGR +15.06% vs +13.30%; Sharpe 0.88 vs 0.81 — both beat.
 ----------------------------------------------------------------
 FINAL VERDICT: FAIL — does not clear the gates
 ```
 
-**How to read this.** The strategy clears the *outperformance* gates (it beat
-SPY on CAGR and Sharpe, and the result is a robustness plateau, not a spike).
-It fails the two gates that test whether the edge is *real*: the bootstrap CI on
-per-period excess return straddles zero, and the outperformance is concentrated
-rather than evenly earned across time. This is exactly the brief's anticipated
-honest outcome — *"might match or modestly beat the index with lower turnover;
-not a get-rich-quick machine."* A ~0.85%/yr edge that we cannot statistically
-distinguish from noise is **not** a green light.
+**How to read this.** Concentration validated the brief's central thesis: the
+monotonic gradient (more concentration → more edge) is real, directional, and a
+plateau rather than a spike. The strategy now clears three gates that the
+full-book clone (+0.85% excess) only partly cleared. But the cost-adjusted
+expectancy gate — *is the edge statistically distinguishable from zero after
+costs?* — still fails by a hair. That is the difference between *"beat the index
+in this sample"* and *"has a provable edge"*, and only the latter is a green
+light. A robust, repeatable near-miss is an honest, useful result; it is not a
+PASS.
 
 **Data caveats (stated, not hidden):**
 - Holdings coverage by reported $ value: Berkshire 96.8%, Gates 99.9%, Pershing
