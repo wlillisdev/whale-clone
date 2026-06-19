@@ -237,8 +237,17 @@ src/whale_clone/
 ├── signal_backtest.py # gold: single-asset long/flat loop, cash earns rf (pure)
 ├── gold.py         # gold timing pipeline + adapted gates (block bootstrap)
 ├── allocation.py   # diversified vs 60/40, risk-adjusted gates (pure engine + glue)
-└── tracker.py      # superinvestor holdings report (current / changes / consensus)
+├── rigor.py        # holdout split + deflated-Sharpe overfitting gate (pure)
+├── tracker.py      # superinvestor holdings report (current / changes / consensus)
+└── paper.py        # quarterly clone signal + forward paper-trade log (no orders)
 ```
+
+**Putting it to work:** `docs/PLAYBOOK.md` is the calculated core/satellite plan
+(broad equity core + the concentrated clone as an *earned* satellite). The clone
+runs hands-off via `python -m whale_clone.paper` (`whale-signal`) and a scheduled
+GitHub Action (`.github/workflows/quarterly-signal.yml`) that emits each
+quarter's trade ticket and appends to a forward paper-trade log — building real
+out-of-sample evidence with zero capital at risk. No orders are ever placed.
 
 The strategy logic is **pure functions** with no IO, so it is unit-testable with
 fixtures. Parquet is the system of record; CSV is for human-readable export only.
