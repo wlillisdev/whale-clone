@@ -151,6 +151,43 @@ buy-and-hold benchmark is hard to beat after costs.** The expectancy gate here
 uses a *block* bootstrap, because a low-turnover timer's daily returns are
 autocorrelated and the IID bootstrap would overstate confidence.
 
+## Diversification verdict (v3)
+
+**FINAL VERDICT: FAIL on the edge gate — but a smoother ride.** A diversified
+portfolio (SPY 40 / IEF 25 / GLD 15 / DBC 10 / SHY 10, quarterly rebalance,
+5 bps/side) vs a 60/40 benchmark, ~2006–2024, judged on *risk-adjusted* terms:
+
+```
+Diversified: CAGR +7.16% | vol 8.0% | Sharpe 0.90 | maxDD -15.2%
+60/40:       CAGR +8.72% | vol 9.9% | Sharpe 0.89 | maxDD -21.3%
+----------------------------------------------------------------
+[FAIL] Risk-adjusted edge   Sharpe diff +0.01; 95% CI [-0.21, +0.22] — spans 0.
+[PASS] Walk-forward         2/3 windows positive Sharpe edge.
+[PASS] Robustness           4/6 weight/timing variants positive.
+[PASS] Sharpe & drawdown    Sharpe 0.90 vs 0.89; maxDD -15.2% vs -21.3%.
+----------------------------------------------------------------
+FINAL VERDICT: FAIL — no statistically significant risk-adjusted edge
+```
+
+Run with `python -m whale_clone.allocation`. The honest reading: the diversified
+book had **essentially the same Sharpe** as 60/40 (the difference is
+indistinguishable from zero), with **lower volatility and a shallower worst
+drawdown** but lower return. So it is a *smoother ride at the same risk-adjusted
+return*, not a better one — real value for crash-tolerance, but not a provable
+edge. (2006–2024 was unusually kind to 60/40; both legs rose for most of it.)
+
+## Scoreboard — three honest verdicts
+
+| Strategy | Verdict | One line |
+|----------|---------|----------|
+| 13F clone (concentrated top-5) | FAIL (near-miss) | +1.76% excess, fails significance |
+| Gold momentum timing | FAIL (decisive) | loses to holding gold at every lookback |
+| Diversified vs 60/40 | FAIL (edge), smoother | same Sharpe, lower drawdown — no provable edge |
+
+The repeated lesson, and the point of the project: **a simple buy-and-hold
+benchmark is very hard to beat after costs.** The machine told the truth three
+times instead of selling a curve fit.
+
 ## Architecture
 
 ```
