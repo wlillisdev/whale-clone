@@ -138,12 +138,13 @@ def _gate_walk_forward(result: BacktestResult, cfg: BacktestConfig, gc: GateConf
         if win_excess > 0:
             positive += 1
 
-    total = sum(excess_logs)
     majority = positive > n / 2
-    # Share check: no single positive window may carry > max_single_window_share
-    # of a positive total.
-    if total > 0:
-        max_share = max(e for e in excess_logs) / total
+    # Share check: no single positive window may carry more than
+    # max_single_window_share of the *positive* total (negative windows must not
+    # distort the denominator).
+    positive_total = sum(e for e in excess_logs if e > 0)
+    if positive_total > 0:
+        max_share = max(excess_logs) / positive_total
         share_ok = max_share <= gc.max_single_window_share
     else:
         max_share = float("nan")
@@ -216,16 +217,18 @@ def _gate_robustness(
         )
         results.append((name, excess))
 
-    valid = [e for _, e in results if not np.isnan(e)]
-    beats = sum(1 for e in valid if e > 0)
-    passed = bool(valid) and beats > len(valid) / 2
-    summary = "; ".join(f"{n} {e:+.2%}" if not np.isnan(e) else n for n, e in results)
-    detail = f"{beats}/{len(valid)} variants beat benchmark (plateau). [{summary}]"
+    # A variant that errored or blew up (NaN CAGR) counts as a FAIL, not as an
+    # excluded sample — otherwise a losing config silently shrinks the plateau.
+    total = len(results)
+    beats = sum(1 for _, e in results if not np.isnan(e) and e > 0)
+    passed = total > 0 and beats > total / 2
+    summary = "; ".join(f"{n} {e:+.2%}" if not np.isnan(e) else f"{n} FAIL" for n, e in results)
+    detail = f"{beats}/{total} variants beat benchmark (plateau). [{summary}]"
     return GateResult(
         "Robustness (parameter plateau)",
         passed,
         detail,
-        {"variants_beating": float(beats), "variants_total": float(len(valid))},
+        {"variants_beating": float(beats), "variants_total": float(total)},
     )
 
 

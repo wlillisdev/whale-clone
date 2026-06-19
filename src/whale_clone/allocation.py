@@ -370,7 +370,7 @@ def main(argv: list[str] | None = None) -> int:
             print("\nIf data hosts are unreachable here, try: whale-alloc --demo", file=sys.stderr)
         return 2
 
-    print(_render(verdict, evaluate_allocation(prices, settings)[0].headline, settings))
+    print(_render(verdict, verdict.headline, settings))
     return 0 if verdict.passed else 1
 
 

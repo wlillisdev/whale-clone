@@ -247,7 +247,10 @@ def _edgar_13f_filings(cik: str) -> list[tuple[str, str, str]]:
         fdates = blk.get("filingDate", [])
         rdates = blk.get("reportDate", [])
         for form, accn, fdate, rdate in zip(forms, accns, fdates, rdates, strict=False):
-            if form in ("13F-HR", "13F-HR/A"):
+            # Original holdings reports only. 13F-HR/A amendments are often
+            # *partial* restatements; treating one as a full portfolio would
+            # silently wipe every name it omits, so we exclude them.
+            if form == "13F-HR":
                 out.append((accn.replace("-", ""), fdate, rdate or fdate))
     return out
 

@@ -74,6 +74,13 @@ A strategy is not "real" until it survives all four (all numbers **after costs**
 
 ## Current verdict
 
+> **Note:** the recorded figures below were produced *before* a post-audit
+> hardening pass (excluding 13F-HR/A amendments, deduping filings, a corrected
+> walk-forward share denominator). The headline conclusions are unchanged, but
+> the exact numbers should be regenerated with `--refresh`. See `docs/SWOT.md`
+> for the full audit and the planned rigor layer (sealed holdout + deflated
+> Sharpe). A `CHANGELOG`-style summary of the fixes is in the git history.
+
 **FINAL VERDICT: FAIL — but a robust near-miss.** Cloning the **top-5
 highest-conviction positions** of three low-turnover managers over 2014–2024
 beat SPY on CAGR *and* Sharpe, held up across time, and survived parameter

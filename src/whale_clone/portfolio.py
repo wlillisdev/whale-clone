@@ -46,7 +46,12 @@ def holdings_known_on(holdings: pd.DataFrame, as_of: pd.Timestamp) -> pd.DataFra
     # Latest filing_date per manager, then that whole filing's rows.
     latest = visible.groupby("manager")["filing_date"].max().rename("latest")
     merged = visible.merge(latest, on="manager")
-    return merged[merged["filing_date"] == merged["latest"]].drop(columns="latest")
+    rows = merged[merged["filing_date"] == merged["latest"]].drop(columns="latest")
+    # Guard: if a manager has two periods sharing one filing_date (e.g. a
+    # catch-up filing), keep only the single latest reporting period so two
+    # quarters are not unioned and double-counted.
+    latest_period = rows.groupby("manager")["period"].transform("max")
+    return rows[rows["period"] == latest_period]
 
 
 def top_n_per_manager(visible_holdings: pd.DataFrame, top_n: int) -> pd.DataFrame:

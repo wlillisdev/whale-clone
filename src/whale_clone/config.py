@@ -60,7 +60,9 @@ class Settings(BaseSettings):
     # --- Sample window ------------------------------------------------------
     start_date: date = date(2014, 1, 1)
     end_date: date = date(2024, 12, 31)
-    # Reserve the most recent fraction as out-of-sample (untouched until the end).
+    # Intended size of a future sealed out-of-sample holdout. NOTE: not yet
+    # wired into the gates (walk-forward currently splits the full sample); kept
+    # as the target for the planned deflated-Sharpe / holdout rigor layer.
     out_of_sample_fraction: float = 0.30
 
     # --- Benchmark ----------------------------------------------------------
