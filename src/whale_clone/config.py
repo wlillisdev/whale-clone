@@ -86,6 +86,18 @@ class Settings(BaseSettings):
     gold_slippage_bps: float = 5.0  # per side; ETF round-trip ~ a few bps
     gold_block_bootstrap_len: int = 0  # 0 = auto (≈ average holding period)
 
+    # --- Diversification study (pre-committed v3) ---------------------------
+    # Diversified multi-asset portfolio vs a 60/40 benchmark, judged on
+    # RISK-ADJUSTED terms (Sharpe + max drawdown), not raw return. The most
+    # evidence-backed idea from the research fan-out. Long-history free ETFs.
+    alloc_weights: dict[str, float] = Field(
+        default_factory=lambda: {"SPY": 0.40, "IEF": 0.25, "GLD": 0.15, "DBC": 0.10, "SHY": 0.10}
+    )
+    alloc_benchmark_weights: dict[str, float] = Field(
+        default_factory=lambda: {"SPY": 0.60, "IEF": 0.40}
+    )
+    alloc_rebalance: str = "Q"  # "M" monthly | "Q" quarterly
+
     # --- Data / engine ------------------------------------------------------
     price_source: str = "yahoo"  # "yahoo" | "stooq" | "demo" (yahoo is sturdiest)
     holdings_source: str = "edgar"  # "edgar" (authoritative) | "dataroma" | "demo"
