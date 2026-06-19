@@ -110,6 +110,16 @@ class Settings(BaseSettings):
     )
     alloc_rebalance: str = "Q"  # "M" monthly | "Q" quarterly
 
+    # --- Execution (paper-only; dry-run by default) ------------------------
+    # Trading is OFF unless both broker_mode="paper" AND execute=True. There is
+    # no live broker in this codebase; paper carries no real-money risk.
+    broker_mode: str = "dry_run"  # "dry_run" | "paper"
+    execute: bool = False  # must be explicitly true to send paper orders
+    exec_cash_buffer: float = 0.02  # never fully invest (rounding/slippage headroom)
+    exec_no_trade_band: float = 0.005  # ignore rebalances smaller than 0.5% of equity
+    exec_max_orders: int = 20  # abort a run that wants more orders than this
+    exec_max_order_notional_pct: float = 0.25  # cap any single order at 25% of equity
+
     # --- Data / engine ------------------------------------------------------
     price_source: str = "yahoo"  # "yahoo" | "stooq" | "demo" (yahoo is sturdiest)
     holdings_source: str = "edgar"  # "edgar" (authoritative) | "dataroma" | "demo"
