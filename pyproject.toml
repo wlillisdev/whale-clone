@@ -35,6 +35,7 @@ whale-clone = "whale_clone.__main__:main"
 whale-gold = "whale_clone.gold:main"
 whale-alloc = "whale_clone.allocation:main"
 whale-track = "whale_clone.tracker:main"
+whale-signal = "whale_clone.paper:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/whale_clone"]
