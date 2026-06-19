@@ -27,7 +27,14 @@ def main(argv: list[str] | None = None) -> int:
         "--price-source", choices=["stooq", "yahoo", "demo"], help="Override price source."
     )
     parser.add_argument(
-        "--holdings-source", choices=["dataroma", "demo"], help="Override holdings source."
+        "--holdings-source",
+        choices=["edgar", "dataroma", "demo"],
+        help="Override holdings source.",
+    )
+    parser.add_argument(
+        "--top-n",
+        type=int,
+        help="Keep only each manager's top-N positions (0 = full portfolio).",
     )
     args = parser.parse_args(argv)
 
@@ -39,6 +46,8 @@ def main(argv: list[str] | None = None) -> int:
         overrides["price_source"] = args.price_source
     if args.holdings_source:
         overrides["holdings_source"] = args.holdings_source
+    if args.top_n is not None:
+        overrides["top_n_positions"] = args.top_n if args.top_n > 0 else None
 
     settings = load_settings(**overrides)
 

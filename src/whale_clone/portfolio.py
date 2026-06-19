@@ -46,7 +46,27 @@ def holdings_known_on(holdings: pd.DataFrame, as_of: pd.Timestamp) -> pd.DataFra
     # Latest filing_date per manager, then that whole filing's rows.
     latest = visible.groupby("manager")["filing_date"].max().rename("latest")
     merged = visible.merge(latest, on="manager")
-    return merged[merged["filing_date"] == merged["latest"]].drop(columns="latest")
+    rows = merged[merged["filing_date"] == merged["latest"]].drop(columns="latest")
+    # Guard: if a manager has two periods sharing one filing_date (e.g. a
+    # catch-up filing), keep only the single latest reporting period so two
+    # quarters are not unioned and double-counted.
+    latest_period = rows.groupby("manager")["period"].transform("max")
+    return rows[rows["period"] == latest_period]
+
+
+def top_n_per_manager(visible_holdings: pd.DataFrame, top_n: int) -> pd.DataFrame:
+    """Keep only each manager's ``top_n`` largest positions by reported value.
+
+    This implements the brief's core thesis — the edge lives in a few
+    high-conviction names, and over-diversification waters it down. Pure.
+    """
+    if top_n <= 0 or visible_holdings.empty:
+        return visible_holdings
+    return (
+        visible_holdings.sort_values("value", ascending=False)
+        .groupby("manager", group_keys=False)
+        .head(top_n)
+    )
 
 
 def target_weights(
@@ -54,13 +74,16 @@ def target_weights(
     *,
     weighting: str = "value",
     max_position_weight: float = 0.25,
+    top_n: int | None = None,
 ) -> dict[str, float]:
     """Combine visible per-manager holdings into capped target weights.
 
     Managers are pooled with equal weight (each manager contributes the same
     total budget), so one large manager does not dominate. Within a manager,
-    ``weighting`` chooses value-proportional or equal weights. Single names are
-    capped at ``max_position_weight`` and the book is renormalised to sum to 1.
+    ``weighting`` chooses value-proportional or equal weights. If ``top_n`` is
+    set, only each manager's ``top_n`` largest positions are kept first (the
+    concentration test). Single names are capped at ``max_position_weight`` and
+    the book is renormalised to sum to 1.
     """
     if visible_holdings.empty:
         return {}
@@ -68,6 +91,8 @@ def target_weights(
         raise ValueError(f"unknown weighting: {weighting!r}")
 
     df = visible_holdings.copy()
+    if top_n is not None:
+        df = top_n_per_manager(df, top_n)
     if weighting == "equal":
         df["w_in_mgr"] = df.groupby("manager")["ticker"].transform(lambda s: 1.0 / len(s))
     else:

@@ -6,6 +6,7 @@ import pytest
 from whale_clone.portfolio import (
     holdings_known_on,
     target_weights,
+    top_n_per_manager,
     validate_holdings,
 )
 
@@ -78,6 +79,38 @@ def test_equal_weighting_within_manager(simple_holdings):
     # BBB appears in both managers: 0.25 + 0.25 = 0.5 before normalisation -> stays 0.5.
     assert abs(sum(w.values()) - 1.0) < 1e-9
     assert w["BBB"] > w["AAA"]
+
+
+def test_top_n_keeps_largest_positions_per_manager():
+    rows = [
+        ("M1", "2020-Q1", "2020-05-15", "AAA", 100.0),
+        ("M1", "2020-Q1", "2020-05-15", "BBB", 50.0),
+        ("M1", "2020-Q1", "2020-05-15", "CCC", 10.0),  # smallest -> dropped at top 2
+        ("M2", "2020-Q1", "2020-05-15", "DDD", 80.0),
+        ("M2", "2020-Q1", "2020-05-15", "EEE", 5.0),  # smallest -> dropped at top 1
+    ]
+    h = validate_holdings(
+        pd.DataFrame(rows, columns=["manager", "period", "filing_date", "ticker", "value"])
+    )
+    top1 = top_n_per_manager(h, 1)
+    assert set(top1["ticker"]) == {"AAA", "DDD"}  # each manager's single biggest
+    top2 = top_n_per_manager(h, 2)
+    assert set(top2[top2["manager"] == "M1"]["ticker"]) == {"AAA", "BBB"}
+
+
+def test_target_weights_top_n_excludes_small_names():
+    rows = [
+        ("M1", "2020-Q1", "2020-05-15", "AAA", 100.0),
+        ("M1", "2020-Q1", "2020-05-15", "BBB", 50.0),
+        ("M1", "2020-Q1", "2020-05-15", "TINY", 1.0),
+    ]
+    h = validate_holdings(
+        pd.DataFrame(rows, columns=["manager", "period", "filing_date", "ticker", "value"])
+    )
+    visible = holdings_known_on(h, pd.Timestamp("2020-05-15"))
+    w = target_weights(visible, weighting="value", max_position_weight=1.0, top_n=2)
+    assert "TINY" not in w
+    assert abs(sum(w.values()) - 1.0) < 1e-9
 
 
 def test_empty_holdings_gives_empty_weights():

@@ -13,6 +13,7 @@ authors = [{ name = "whale-clone" }]
 dependencies = [
     "pandas>=2.0",
     "numpy>=1.24",
+    "scipy>=1.10",
     "pydantic>=2.5",
     "pydantic-settings>=2.1",
     "pyarrow>=14.0",
@@ -31,6 +32,9 @@ dev = [
 
 [project.scripts]
 whale-clone = "whale_clone.__main__:main"
+whale-gold = "whale_clone.gold:main"
+whale-alloc = "whale_clone.allocation:main"
+whale-track = "whale_clone.tracker:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/whale_clone"]

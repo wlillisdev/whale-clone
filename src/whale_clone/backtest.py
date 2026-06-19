@@ -36,6 +36,7 @@ class BacktestConfig:
     benchmark: str = "SPY"
     weighting: str = "value"
     max_position_weight: float = 0.25
+    top_n: int | None = None  # keep only each manager's top-N positions (concentration)
     cost_model: CostModel = field(default_factory=CostModel)
     risk_free_annual: float = 0.0
     trading_days_per_year: int = 252
@@ -118,6 +119,7 @@ def run_backtest(
             visible,
             weighting=config.weighting,
             max_position_weight=config.max_position_weight,
+            top_n=config.top_n,
         )
         # Keep only names we actually have prices for; renormalise.
         weights = {t: w for t, w in weights.items() if t in prices.columns}

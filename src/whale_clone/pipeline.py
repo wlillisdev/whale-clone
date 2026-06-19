@@ -30,6 +30,7 @@ def backtest_config(settings: Settings) -> BacktestConfig:
         benchmark=settings.benchmark,
         weighting=settings.weighting,
         max_position_weight=settings.max_position_weight,
+        top_n=settings.top_n_positions,
         cost_model=CostModel(
             commission_bps=settings.commission_bps,
             slippage_bps=settings.slippage_bps,
@@ -47,6 +48,9 @@ def gate_config(settings: Settings) -> GateConfig:
         max_single_window_share=settings.max_single_window_share,
         random_seed=settings.random_seed,
         trading_days_per_year=settings.trading_days_per_year,
+        n_strategies_tried=settings.n_strategies_tried,
+        deflated_sharpe_threshold=settings.deflated_sharpe_threshold,
+        trial_sharpe_dispersion=settings.trial_sharpe_dispersion,
     )
 
 
@@ -61,6 +65,7 @@ def load_data(settings: Settings, *, refresh: bool = False) -> PipelineData:
         store=store,
         refresh=refresh,
         seed=settings.random_seed,
+        openfigi_key=settings.openfigi_api_key,
     )
     tickers = sorted(holdings["ticker"].unique())
     prices = load_prices(

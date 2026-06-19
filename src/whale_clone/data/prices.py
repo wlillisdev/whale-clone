@@ -16,6 +16,8 @@ blocked, use ``source="demo"``.
 from __future__ import annotations
 
 import io
+import sys
+import time
 from datetime import date
 
 import numpy as np
@@ -26,6 +28,11 @@ from ..store import Store
 
 _HEADERS = {"User-Agent": "whale-clone/0.1 (research; contact via repo)"}
 _TIMEOUT = 30
+_YAHOO_PAUSE = 0.3  # gentle pacing to avoid throttle-induced 404s on bursts
+
+
+def _warn(msg: str) -> None:
+    print(f"[prices] {msg}", file=sys.stderr)
 
 
 def load_prices(
@@ -55,6 +62,11 @@ def load_prices(
     else:
         raise ValueError(f"unknown price source: {source!r}")
 
+    if benchmark.upper() not in panel.columns:
+        raise RuntimeError(
+            f"benchmark {benchmark!r} has no price data from source {source!r} — "
+            "cannot compare against it"
+        )
     panel = panel.sort_index()
     panel = panel.loc[(panel.index >= pd.Timestamp(start)) & (panel.index <= pd.Timestamp(end))]
     if store is not None:
@@ -67,17 +79,31 @@ def load_prices(
 # --------------------------------------------------------------------------- #
 def _stooq_panel(tickers: list[str], start: date, end: date) -> pd.DataFrame:
     series: dict[str, pd.Series] = {}
+    skipped: list[str] = []
     for t in tickers:
-        df = _stooq_one(t, start, end)
+        try:
+            df = _stooq_one(t, start, end)
+        except Exception as exc:  # network / parse error for one ticker
+            skipped.append(f"{t} ({exc})")
+            continue
         if df is not None and not df.empty:
             series[t] = df
+        else:
+            skipped.append(f"{t} (no data — delisted or throttled?)")
+    if skipped:
+        _warn(f"stooq skipped {len(skipped)} ticker(s): {', '.join(skipped)}")
     if not series:
-        raise RuntimeError("stooq returned no data for any ticker (network blocked?)")
+        raise RuntimeError(
+            "stooq returned no data for any ticker. Stooq throttles its free CSV "
+            "downloads per IP (shared hosts are often over the limit). Try "
+            "--price-source yahoo."
+        )
     return pd.DataFrame(series)
 
 
 def _stooq_one(ticker: str, start: date, end: date) -> pd.Series | None:
-    symbol = f"{ticker.lower()}.us"
+    # Stooq uses '-' for share classes (BRK-B), not '/'.
+    symbol = f"{ticker.lower().replace('/', '-').replace('.', '-')}.us"
     url = f"https://stooq.com/q/d/l/?s={symbol}&i=d&d1={start:%Y%m%d}&d2={end:%Y%m%d}"
     resp = requests.get(url, headers=_HEADERS, timeout=_TIMEOUT)
     resp.raise_for_status()
@@ -93,10 +119,20 @@ def _stooq_one(ticker: str, start: date, end: date) -> pd.Series | None:
 
 def _yahoo_panel(tickers: list[str], start: date, end: date) -> pd.DataFrame:
     series: dict[str, pd.Series] = {}
+    skipped: list[str] = []
     for t in tickers:
-        s = _yahoo_one(t, start, end)
+        try:
+            s = _yahoo_one(t, start, end)
+            time.sleep(_YAHOO_PAUSE)
+        except Exception as exc:  # one bad/delisted ticker must not kill the run
+            skipped.append(f"{t} ({exc})")
+            continue
         if s is not None and not s.empty:
             series[t] = s
+        else:
+            skipped.append(f"{t} (no data — delisted or not yet listed)")
+    if skipped:
+        _warn(f"yahoo skipped {len(skipped)} ticker(s): {', '.join(skipped)}")
     if not series:
         raise RuntimeError("yahoo returned no data for any ticker (network blocked?)")
     return pd.DataFrame(series)
@@ -105,8 +141,10 @@ def _yahoo_panel(tickers: list[str], start: date, end: date) -> pd.DataFrame:
 def _yahoo_one(ticker: str, start: date, end: date) -> pd.Series | None:
     p1 = int(pd.Timestamp(start).timestamp())
     p2 = int(pd.Timestamp(end).timestamp())
+    # Yahoo uses '-' for share classes (BRK-B), not '/' as 13F/OpenFIGI report it.
+    yf_symbol = ticker.replace("/", "-").replace(".", "-")
     url = (
-        f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+        f"https://query1.finance.yahoo.com/v8/finance/chart/{yf_symbol}"
         f"?period1={p1}&period2={p2}&interval=1d&events=div%2Csplit"
     )
     resp = requests.get(url, headers=_HEADERS, timeout=_TIMEOUT)
@@ -122,6 +160,7 @@ def _yahoo_one(ticker: str, start: date, end: date) -> pd.Series | None:
         return None
     closes = adj[0].get("adjclose")
     idx = pd.to_datetime(ts, unit="s").normalize()
+    # Keep the original ticker as the series name so it matches the holdings.
     return pd.Series(closes, index=idx, name=ticker).astype(float).dropna()
 
 

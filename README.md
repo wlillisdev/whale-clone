@@ -40,45 +40,183 @@ make check                    # ruff + mypy + pytest
 ```
 
 One command (`python -m whale_clone`) pulls data, runs the backtest, and prints
-a PASS/FAIL verdict against the four validation gates.
+a PASS/FAIL verdict against the five validation gates.
 
 ### Data sources
 
-| Layer     | Source                                   | Notes |
-|-----------|------------------------------------------|-------|
-| Prices    | Stooq (default) / Yahoo                   | daily adjusted close; SPY benchmark |
-| Holdings  | Dataroma (snapshot) / SEC EDGAR (history) | EDGAR gives exact **filing dates** |
-| Offline   | `--demo` synthetic generator              | deterministic; for CI / sandboxes |
+| Layer     | Source                                    | Notes |
+|-----------|-------------------------------------------|-------|
+| Prices    | Yahoo (default) / Stooq                    | daily adjusted close; SPY benchmark. Dead/delisted tickers are skipped, not fatal. |
+| Holdings  | **SEC EDGAR (default)** / Dataroma          | EDGAR gives the real multi-year history with exact **filing dates**; CUSIPs are mapped to tickers via OpenFIGI (cached). Dataroma is a current-snapshot-only fallback. |
+| Offline   | `--demo` synthetic generator               | deterministic; for CI / sandboxes |
+
+> **First EDGAR run is slow** (a few minutes): it downloads every 13F filing for
+> each manager and maps CUSIPs→tickers through OpenFIGI's free tier (~25 req/min).
+> Everything is cached to `.cache/` as Parquet/JSON, so subsequent runs are fast
+> and offline. Set `WHALE_OPENFIGI_API_KEY` to raise the OpenFIGI rate limit.
 
 **Honesty rule on dates:** the backtest acts on the **actual 13F filing date**
 (when data became public), never the quarter-end. A test
 (`tests/test_backtest_no_lookahead.py`) proves decisions use only
 filing-date-available data.
 
-## The four validation gates
+## The five validation gates
 
-A strategy is not "real" until it survives all four (all numbers **after costs**):
+A strategy is not "real" until it survives all of them (all numbers **after costs**):
 
 1. **Cost-adjusted expectancy** — bootstrap 95% CI lower bound on per-period
-   excess return vs SPY is `> 0`.
+   excess return vs the benchmark is `> 0` (block bootstrap for timing strategies).
 2. **Walk-forward** — the edge appears in the majority of ≥3 sequential windows,
-   with no single window carrying the whole result.
+   with no single window carrying the whole *positive* result.
 3. **Robustness** — survives parameter variation (manager count, slippage, cap,
-   weighting) as a *plateau*, not a single spike.
-4. **Benchmark-beating** — net CAGR **and** Sharpe both beat buy-and-hold SPY.
+   weighting, lookback) as a *plateau*, not a single spike.
+4. **Benchmark-beating** — net CAGR **and** Sharpe both beat buy-and-hold.
+5. **Overfitting guard (deflated Sharpe)** — the edge must beat what the *best of
+   N tried strategies* would produce by luck (Bailey & López de Prado). This is
+   the guard against hunting strategies until one passes by chance; see
+   `rigor.py` and `docs/SWOT.md`.
 
 ## Current verdict
 
-> **PENDING REAL-DATA RUN.** The engine, gates, and no-look-ahead guarantee are
-> implemented and unit-tested (see `make test`). This repository was built in a
-> sandboxed environment whose egress proxy blocks the market-data hosts
-> (Stooq / Yahoo / Dataroma / SEC all return HTTP 403), so the *empirical*
-> verdict on real holdings has not yet been produced here.
->
-> Run `make backtest` from an environment with network access to populate this
-> section with the real numbers (strategy vs SPY CAGR, Sharpe, and the four
-> gates' PASS/FAIL). The offline `make demo` run confirms the full pipeline
-> executes end to end.
+> **Note:** the recorded figures below were produced *before* a post-audit
+> hardening pass (excluding 13F-HR/A amendments, deduping filings, a corrected
+> walk-forward share denominator). The headline conclusions are unchanged, but
+> the exact numbers should be regenerated with `--refresh`. See `docs/SWOT.md`
+> for the full audit and the planned rigor layer (sealed holdout + deflated
+> Sharpe). A `CHANGELOG`-style summary of the fixes is in the git history.
+
+**FINAL VERDICT: FAIL — but a robust near-miss.** Cloning the **top-5
+highest-conviction positions** of three low-turnover managers over 2014–2024
+beat SPY on CAGR *and* Sharpe, held up across time, and survived parameter
+variation — **3 of the 4 original gates pass**. It fails the
+statistical-significance gate (the 95% CI on excess return dips just below zero),
+so we still cannot call the edge *proven*. We hold that line rather than loosen
+the gate. (A 5th gate — the deflated-Sharpe overfitting guard — was added in the
+hardening pass; a near-miss like this does not clear it either, which only
+reinforces the verdict.)
+
+Run on real data (SEC EDGAR 13F history → OpenFIGI tickers → Yahoo adjusted
+close), pre-committed managers **Berkshire Hathaway, Gates Foundation Trust,
+Pershing Square**, top-5 positions each, 2014–2024:
+
+```
+Strategy CAGR +15.06% | Benchmark CAGR +13.30% | Excess +1.76%
+Strategy Sharpe 0.88  | Benchmark Sharpe 0.81  | Avg turnover/rebalance 10.4% | Total costs 0.77%
+----------------------------------------------------------------
+[FAIL] Cost-adjusted expectancy
+        Mean daily excess +0.0065%; 95% CI [-0.0073%, +0.0201%]; lower bound <= 0.
+[PASS] Walk-forward / out-of-sample
+        2/3 windows beat benchmark; max single-window share 54% (limit 70%).
+[PASS] Robustness (parameter plateau)
+        9/9 variants beat benchmark. Concentration gradient:
+        top 3 +2.07% > top 5 +1.76% > top 8 +1.19% > top 10 +1.07%.
+[PASS] Benchmark-beating (CAGR & Sharpe)
+        CAGR +15.06% vs +13.30%; Sharpe 0.88 vs 0.81 — both beat.
+----------------------------------------------------------------
+FINAL VERDICT: FAIL — does not clear the gates
+```
+
+**How to read this.** Concentration validated the brief's central thesis: the
+monotonic gradient (more concentration → more edge) is real, directional, and a
+plateau rather than a spike. The strategy now clears three gates that the
+full-book clone (+0.85% excess) only partly cleared. But the cost-adjusted
+expectancy gate — *is the edge statistically distinguishable from zero after
+costs?* — still fails by a hair. That is the difference between *"beat the index
+in this sample"* and *"has a provable edge"*, and only the latter is a green
+light. A robust, repeatable near-miss is an honest, useful result; it is not a
+PASS.
+
+**Data caveats (stated, not hidden):**
+- Holdings coverage by reported $ value: Berkshire 96.8%, Gates 99.9%, Pershing
+  96.3%. Unmapped lines are mostly options/notes and a few foreign listings.
+- A handful of **delisted / acquired** names (e.g. TWTR, VIAB, TMK) have no
+  history on free Yahoo and are dropped. These are disproportionately
+  merger-arb / acquired positions, so the real strategy's exposure to takeout
+  outcomes is under-represented — a known limitation of free price data, not the
+  engine.
+- Numbers are net of a 7.5 bps/side slippage model; results are reproducible
+  (seeded bootstrap). Re-run with `make backtest` to regenerate.
+
+## Gold timing verdict (v2)
+
+**FINAL VERDICT: FAIL — decisively. Timing gold was strictly worse than holding
+it.** A pre-committed 12-month time-series momentum signal on GLD (long/flat,
+monthly, 5 bps/side), benchmarked against buy-and-hold GLD over 2014–2024:
+
+```
+Strategy CAGR +2.30% | Buy-and-hold GLD +7.07% | Excess -4.77%
+Strategy Sharpe 0.25 | Benchmark Sharpe 0.56   | Time-in-market 57% | 18 trades
+----------------------------------------------------------------
+[FAIL] Cost-adjusted expectancy (block bootstrap)
+        Mean daily excess -0.0197%; 95% CI [-0.0419%, -0.0029%] — entirely below 0.
+[FAIL] Walk-forward            0/3 windows beat buy-and-hold.
+[FAIL] Robustness (lookback)   0/5 lookbacks beat (126..378 days all negative).
+[FAIL] Benchmark-beating       CAGR 2.30% vs 7.07% and Sharpe 0.25 vs 0.56 — both lose.
+----------------------------------------------------------------
+FINAL VERDICT: FAIL — does not clear the gates
+```
+
+Run with `python -m whale_clone.gold`. This is a *clean* fail (unlike the 13F
+near-miss): the timer underperforms at **every** lookback, so it is a robust
+negative, not an unlucky configuration. The cause is visible in the
+diagnostics — being flat ~43% of the time made it miss gold's strong 2019–20 and
+2024 runs while paying costs. The honest lesson, twice over: **a simple
+buy-and-hold benchmark is hard to beat after costs.** The expectancy gate here
+uses a *block* bootstrap, because a low-turnover timer's daily returns are
+autocorrelated and the IID bootstrap would overstate confidence.
+
+## Diversification verdict (v3)
+
+**FINAL VERDICT: FAIL on the edge gate — but a smoother ride.** A diversified
+portfolio (SPY 40 / IEF 25 / GLD 15 / DBC 10 / SHY 10, quarterly rebalance,
+5 bps/side) vs a 60/40 benchmark, ~2006–2024, judged on *risk-adjusted* terms:
+
+```
+Diversified: CAGR +7.16% | vol 8.0% | Sharpe 0.90 | maxDD -15.2%
+60/40:       CAGR +8.72% | vol 9.9% | Sharpe 0.89 | maxDD -21.3%
+----------------------------------------------------------------
+[FAIL] Risk-adjusted edge   Sharpe diff +0.01; 95% CI [-0.21, +0.22] — spans 0.
+[PASS] Walk-forward         2/3 windows positive Sharpe edge.
+[PASS] Robustness           4/6 weight/timing variants positive.
+[PASS] Sharpe & drawdown    Sharpe 0.90 vs 0.89; maxDD -15.2% vs -21.3%.
+----------------------------------------------------------------
+FINAL VERDICT: FAIL — no statistically significant risk-adjusted edge
+```
+
+Run with `python -m whale_clone.allocation`. The honest reading: the diversified
+book had **essentially the same Sharpe** as 60/40 (the difference is
+indistinguishable from zero), with **lower volatility and a shallower worst
+drawdown** but lower return. So it is a *smoother ride at the same risk-adjusted
+return*, not a better one — real value for crash-tolerance, but not a provable
+edge. (2006–2024 was unusually kind to 60/40; both legs rose for most of it.)
+
+## Scoreboard — three honest verdicts
+
+| Strategy | Verdict | One line |
+|----------|---------|----------|
+| 13F clone (concentrated top-5) | FAIL (near-miss) | +1.76% excess, fails significance |
+| Gold momentum timing | FAIL (decisive) | loses to holding gold at every lookback |
+| Diversified vs 60/40 | FAIL (edge), smoother | same Sharpe, lower drawdown — no provable edge |
+
+The repeated lesson, and the point of the project: **a simple buy-and-hold
+benchmark is very hard to beat after costs.** The machine told the truth three
+times instead of selling a curve fit.
+
+## Holdings tracker (the useful by-product)
+
+Since "beat the market" did not survive honest testing, the same verified EDGAR
+pipeline powers something that *is* unambiguously useful and makes no edge claim:
+a tracker that reports **what the tracked managers hold now, what they changed
+last quarter (NEW / ADD / TRIM / EXIT), and which names they hold in common.**
+
+```bash
+python -m whale_clone.tracker            # markdown report to stdout
+python -m whale_clone.tracker --csv holdings.csv   # also export current holdings
+python -m whale_clone.tracker --demo     # offline sample
+```
+
+It's sourced fact (SEC 13F), deterministic, and unit-tested — a reporting tool,
+not a probabilistic bet.
 
 ## Architecture
 
@@ -91,10 +229,15 @@ src/whale_clone/
 ├── portfolio.py    # holdings -> capped target weights (pure)
 ├── costs.py        # commission + slippage on turnover (pure)
 ├── backtest.py     # quarterly rebalance loop on filing dates, net of costs (pure)
-├── metrics.py      # CAGR, Sharpe, drawdown, bootstrap CI (pure)
+├── metrics.py      # CAGR, Sharpe, drawdown, IID + block bootstrap CI (pure)
 ├── gates.py        # the 4 gates -> verdict (pure given data)
 ├── store.py        # Parquet cache (system of record)
-└── pipeline.py     # the only IO<->engine glue
+├── pipeline.py     # 13F clone: the only IO<->engine glue
+├── signals.py      # gold: momentum/SMA signals + causal monthly targets (pure)
+├── signal_backtest.py # gold: single-asset long/flat loop, cash earns rf (pure)
+├── gold.py         # gold timing pipeline + adapted gates (block bootstrap)
+├── allocation.py   # diversified vs 60/40, risk-adjusted gates (pure engine + glue)
+└── tracker.py      # superinvestor holdings report (current / changes / consensus)
 ```
 
 The strategy logic is **pure functions** with no IO, so it is unit-testable with

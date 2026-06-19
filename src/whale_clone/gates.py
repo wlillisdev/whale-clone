@@ -34,6 +34,9 @@ class GateConfig:
     max_single_window_share: float = 0.70
     random_seed: int = 1234
     trading_days_per_year: int = 252
+    n_strategies_tried: int = 8
+    deflated_sharpe_threshold: float = 0.95
+    trial_sharpe_dispersion: float = 0.5
 
 
 @dataclass(frozen=True)
@@ -138,12 +141,13 @@ def _gate_walk_forward(result: BacktestResult, cfg: BacktestConfig, gc: GateConf
         if win_excess > 0:
             positive += 1
 
-    total = sum(excess_logs)
     majority = positive > n / 2
-    # Share check: no single positive window may carry > max_single_window_share
-    # of a positive total.
-    if total > 0:
-        max_share = max(e for e in excess_logs) / total
+    # Share check: no single positive window may carry more than
+    # max_single_window_share of the *positive* total (negative windows must not
+    # distort the denominator).
+    positive_total = sum(e for e in excess_logs if e > 0)
+    if positive_total > 0:
+        max_share = max(excess_logs) / positive_total
         share_ok = max_share <= gc.max_single_window_share
     else:
         max_share = float("nan")
@@ -187,6 +191,11 @@ def _variations(
     other = "equal" if cfg.weighting == "value" else "value"
     variants.append((f"{other} weighting", holdings, replace(cfg, weighting=other)))
 
+    # Concentration: vary top-N so the edge must hold as a plateau, not one N.
+    for n in (3, 5, 8, 10):
+        if n != cfg.top_n:
+            variants.append((f"top {n}", holdings, replace(cfg, top_n=n)))
+
     # Drop one manager (the alphabetically first), if more than one.
     managers = sorted(holdings["manager"].unique())
     if len(managers) > 1:
@@ -211,16 +220,18 @@ def _gate_robustness(
         )
         results.append((name, excess))
 
-    valid = [e for _, e in results if not np.isnan(e)]
-    beats = sum(1 for e in valid if e > 0)
-    passed = bool(valid) and beats > len(valid) / 2
-    summary = "; ".join(f"{n} {e:+.2%}" if not np.isnan(e) else n for n, e in results)
-    detail = f"{beats}/{len(valid)} variants beat benchmark (plateau). [{summary}]"
+    # A variant that errored or blew up (NaN CAGR) counts as a FAIL, not as an
+    # excluded sample — otherwise a losing config silently shrinks the plateau.
+    total = len(results)
+    beats = sum(1 for _, e in results if not np.isnan(e) and e > 0)
+    passed = total > 0 and beats > total / 2
+    summary = "; ".join(f"{n} {e:+.2%}" if not np.isnan(e) else f"{n} FAIL" for n, e in results)
+    detail = f"{beats}/{total} variants beat benchmark (plateau). [{summary}]"
     return GateResult(
         "Robustness (parameter plateau)",
         passed,
         detail,
-        {"variants_beating": float(beats), "variants_total": float(len(valid))},
+        {"variants_beating": float(beats), "variants_total": float(total)},
     )
 
 
@@ -248,11 +259,20 @@ def evaluate_gates(
     headline = _full_sample_metrics(result, cfg)
     headline["excess_cagr"] = headline["strategy_cagr"] - headline["benchmark_cagr"]
 
+    from .rigor import deflated_sharpe_gate
+
     gates = [
         _gate_expectancy(result, gc),
         _gate_walk_forward(result, cfg, gc),
         _gate_robustness(holdings, prices, cfg, gc),
         _gate_benchmark_beating(headline),
+        deflated_sharpe_gate(
+            result.excess_returns,
+            n_strategies_tried=gc.n_strategies_tried,
+            trials_sr_std=gc.trial_sharpe_dispersion,
+            threshold=gc.deflated_sharpe_threshold,
+            periods_per_year=cfg.trading_days_per_year,
+        ),
     ]
     passed = all(g.passed for g in gates)
     return Verdict(passed=passed, gates=gates, headline=headline)
