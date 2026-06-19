@@ -188,6 +188,22 @@ The repeated lesson, and the point of the project: **a simple buy-and-hold
 benchmark is very hard to beat after costs.** The machine told the truth three
 times instead of selling a curve fit.
 
+## Holdings tracker (the useful by-product)
+
+Since "beat the market" did not survive honest testing, the same verified EDGAR
+pipeline powers something that *is* unambiguously useful and makes no edge claim:
+a tracker that reports **what the tracked managers hold now, what they changed
+last quarter (NEW / ADD / TRIM / EXIT), and which names they hold in common.**
+
+```bash
+python -m whale_clone.tracker            # markdown report to stdout
+python -m whale_clone.tracker --csv holdings.csv   # also export current holdings
+python -m whale_clone.tracker --demo     # offline sample
+```
+
+It's sourced fact (SEC 13F), deterministic, and unit-tested — a reporting tool,
+not a probabilistic bet.
+
 ## Architecture
 
 ```
@@ -205,7 +221,9 @@ src/whale_clone/
 ├── pipeline.py     # 13F clone: the only IO<->engine glue
 ├── signals.py      # gold: momentum/SMA signals + causal monthly targets (pure)
 ├── signal_backtest.py # gold: single-asset long/flat loop, cash earns rf (pure)
-└── gold.py         # gold timing pipeline + adapted gates (block bootstrap)
+├── gold.py         # gold timing pipeline + adapted gates (block bootstrap)
+├── allocation.py   # diversified vs 60/40, risk-adjusted gates (pure engine + glue)
+└── tracker.py      # superinvestor holdings report (current / changes / consensus)
 ```
 
 The strategy logic is **pure functions** with no IO, so it is unit-testable with
