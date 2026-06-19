@@ -22,6 +22,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+broker = ["alpaca-py>=0.30"]
 dev = [
     "pytest>=8.0",
     "ruff>=0.4",
@@ -36,6 +37,7 @@ whale-gold = "whale_clone.gold:main"
 whale-alloc = "whale_clone.allocation:main"
 whale-track = "whale_clone.tracker:main"
 whale-signal = "whale_clone.paper:main"
+whale-trade = "whale_clone.trade:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/whale_clone"]

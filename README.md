@@ -239,8 +239,37 @@ src/whale_clone/
 ├── allocation.py   # diversified vs 60/40, risk-adjusted gates (pure engine + glue)
 ├── rigor.py        # holdout split + deflated-Sharpe overfitting gate (pure)
 ├── tracker.py      # superinvestor holdings report (current / changes / consensus)
-└── paper.py        # quarterly clone signal + forward paper-trade log (no orders)
+├── paper.py        # quarterly clone signal + forward paper-trade log (no orders)
+├── execution.py    # target weights -> orders; guardrails; DryRunBroker (pure/offline)
+├── broker_alpaca.py# Alpaca PAPER broker (optional dep; the only networked client)
+└── trade.py        # whale-trade CLI: dry-run by default, paper-only execution
 ```
+
+### Paper execution (no live trading, ever)
+
+`whale-trade` turns the quarterly signal into orders against an Alpaca **paper**
+account. Safety is layered and fail-closed:
+
+- **Dry-run by default.** With no flags it previews the order ticket and sends
+  nothing. Real submission needs **both** `--paper` and `--execute`, plus an open
+  market and a clean guardrail check.
+- **Paper-only.** There is no live-broker class in the codebase; trading real
+  money would require deliberately writing one. Paper API keys can't touch a
+  live account anyway.
+- **Fail-closed guardrails:** an empty/NaN target never liquidates the book;
+  no-leverage + per-order cap + max-orders limits; a kill-switch
+  (`WHALE_EXEC_KILL=1` or a `.halt` file); idempotent client order ids.
+
+```bash
+python -m whale_clone.trade --demo          # offline preview, no orders
+pip install -e ".[broker]"                   # add the Alpaca SDK
+export ALPACA_API_KEY=... ALPACA_SECRET_KEY=...   # PAPER keys
+python -m whale_clone.trade --paper                # connect to paper, still preview
+python -m whale_clone.trade --paper --execute      # actually place paper orders
+```
+
+The whole engine is unit-tested offline through `DryRunBroker` — no network, no
+money. See `docs/PLAYBOOK.md` for how this fits the core/satellite plan.
 
 **Putting it to work:** `docs/PLAYBOOK.md` is the calculated core/satellite plan
 (broad equity core + the concentrated clone as an *earned* satellite). The clone
