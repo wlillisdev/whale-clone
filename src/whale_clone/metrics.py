@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+from scipy.stats import norm
 
 TRADING_DAYS = 252
 
@@ -126,3 +127,58 @@ def block_bootstrap_mean_ci(
     lower = float(np.quantile(means, alpha / 2.0))
     upper = float(np.quantile(means, 1.0 - alpha / 2.0))
     return BootstrapCI(float(data.mean()), lower, upper, confidence)
+
+
+# --------------------------------------------------------------------------- #
+# Deflated Sharpe Ratio — guards against selecting the best of many trials
+# (Bailey & López de Prado). The point: a Sharpe that looks good is only real
+# if it beats what the BEST of N noise strategies would produce by luck.
+# --------------------------------------------------------------------------- #
+def probabilistic_sharpe(
+    returns: pd.Series,
+    *,
+    sr_benchmark: float = 0.0,
+    periods_per_year: int = TRADING_DAYS,
+) -> float:
+    """P(true Sharpe > ``sr_benchmark``) given the observed SR, n, skew, kurtosis.
+
+    Both Sharpes are annualised. Returns a probability in [0, 1].
+    """
+    r = returns.dropna()
+    n = len(r)
+    if n < 3 or r.std(ddof=1) == 0:
+        return float("nan")
+    sr = sharpe(r, periods_per_year=periods_per_year) / np.sqrt(periods_per_year)
+    sr_b = sr_benchmark / np.sqrt(periods_per_year)
+    g3 = float(((r - r.mean()) ** 3).mean() / r.std(ddof=1) ** 3)  # skew
+    g4 = float(((r - r.mean()) ** 4).mean() / r.std(ddof=1) ** 4)  # kurtosis
+    denom = np.sqrt(max(1e-12, 1.0 - g3 * sr + (g4 - 1.0) / 4.0 * sr**2))
+    return float(norm.cdf((sr - sr_b) * np.sqrt(n - 1) / denom))
+
+
+def expected_max_sharpe(
+    n_trials: int, *, sr_std: float, periods_per_year: int = TRADING_DAYS
+) -> float:
+    """Expected maximum (annualised) Sharpe from ``n_trials`` independent noise
+    strategies whose per-trial Sharpes scatter with std ``sr_std`` (annualised).
+    """
+    if n_trials < 2 or sr_std <= 0:
+        return 0.0
+    e = 0.5772156649015329  # Euler-Mascheroni
+    z = norm.ppf(1.0 - 1.0 / n_trials) * (1.0 - e) + norm.ppf(1.0 - 1.0 / (n_trials * np.e)) * e
+    return float(sr_std * z)
+
+
+def deflated_sharpe(
+    returns: pd.Series,
+    *,
+    n_trials: int,
+    trials_sr_std: float,
+    periods_per_year: int = TRADING_DAYS,
+) -> float:
+    """Deflated Sharpe Ratio: PSR with the benchmark set to the expected max
+    Sharpe of ``n_trials`` noise strategies. A value > 0.95 means the strategy's
+    true Sharpe beats the data-mining baseline at 95% confidence.
+    """
+    sr0 = expected_max_sharpe(n_trials, sr_std=trials_sr_std, periods_per_year=periods_per_year)
+    return probabilistic_sharpe(returns, sr_benchmark=sr0, periods_per_year=periods_per_year)

@@ -73,6 +73,16 @@ class Settings(BaseSettings):
     bootstrap_iterations: int = 5000
     bootstrap_confidence: float = 0.95
     walk_forward_windows: int = 3
+    # Deflated-Sharpe rigor guard (Bailey & Lopez de Prado): a strategy's Sharpe
+    # must beat what the BEST of `n_strategies_tried` noise strategies would
+    # produce by luck. Pre-committed honestly to the number of distinct
+    # strategies tested in this repo (13F, gold, diversification, + headroom).
+    n_strategies_tried: int = 8
+    deflated_sharpe_threshold: float = 0.95
+    # Prior for the spread of (annualised) excess-return Sharpes across the
+    # strategies/variants tried — used as the noise-search dispersion. A
+    # documented conservative assumption, not fitted per run.
+    trial_sharpe_dispersion: float = 0.5
     # A single window must not carry the whole result: its share of total excess
     # return must stay under this fraction for the walk-forward gate to pass.
     max_single_window_share: float = 0.70

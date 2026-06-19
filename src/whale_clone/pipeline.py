@@ -48,6 +48,9 @@ def gate_config(settings: Settings) -> GateConfig:
         max_single_window_share=settings.max_single_window_share,
         random_seed=settings.random_seed,
         trading_days_per_year=settings.trading_days_per_year,
+        n_strategies_tried=settings.n_strategies_tried,
+        deflated_sharpe_threshold=settings.deflated_sharpe_threshold,
+        trial_sharpe_dispersion=settings.trial_sharpe_dispersion,
     )
 
 

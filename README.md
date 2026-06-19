@@ -40,7 +40,7 @@ make check                    # ruff + mypy + pytest
 ```
 
 One command (`python -m whale_clone`) pulls data, runs the backtest, and prints
-a PASS/FAIL verdict against the four validation gates.
+a PASS/FAIL verdict against the five validation gates.
 
 ### Data sources
 
@@ -60,17 +60,21 @@ a PASS/FAIL verdict against the four validation gates.
 (`tests/test_backtest_no_lookahead.py`) proves decisions use only
 filing-date-available data.
 
-## The four validation gates
+## The five validation gates
 
-A strategy is not "real" until it survives all four (all numbers **after costs**):
+A strategy is not "real" until it survives all of them (all numbers **after costs**):
 
 1. **Cost-adjusted expectancy** — bootstrap 95% CI lower bound on per-period
-   excess return vs SPY is `> 0`.
+   excess return vs the benchmark is `> 0` (block bootstrap for timing strategies).
 2. **Walk-forward** — the edge appears in the majority of ≥3 sequential windows,
-   with no single window carrying the whole result.
+   with no single window carrying the whole *positive* result.
 3. **Robustness** — survives parameter variation (manager count, slippage, cap,
-   weighting) as a *plateau*, not a single spike.
-4. **Benchmark-beating** — net CAGR **and** Sharpe both beat buy-and-hold SPY.
+   weighting, lookback) as a *plateau*, not a single spike.
+4. **Benchmark-beating** — net CAGR **and** Sharpe both beat buy-and-hold.
+5. **Overfitting guard (deflated Sharpe)** — the edge must beat what the *best of
+   N tried strategies* would produce by luck (Bailey & López de Prado). This is
+   the guard against hunting strategies until one passes by chance; see
+   `rigor.py` and `docs/SWOT.md`.
 
 ## Current verdict
 
@@ -84,9 +88,12 @@ A strategy is not "real" until it survives all four (all numbers **after costs**
 **FINAL VERDICT: FAIL — but a robust near-miss.** Cloning the **top-5
 highest-conviction positions** of three low-turnover managers over 2014–2024
 beat SPY on CAGR *and* Sharpe, held up across time, and survived parameter
-variation — **3 of 4 gates pass**. It fails only the statistical-significance
-gate (the 95% CI on excess return dips just below zero), so we still cannot call
-the edge *proven*. We hold that line rather than loosen the gate.
+variation — **3 of the 4 original gates pass**. It fails the
+statistical-significance gate (the 95% CI on excess return dips just below zero),
+so we still cannot call the edge *proven*. We hold that line rather than loosen
+the gate. (A 5th gate — the deflated-Sharpe overfitting guard — was added in the
+hardening pass; a near-miss like this does not clear it either, which only
+reinforces the verdict.)
 
 Run on real data (SEC EDGAR 13F history → OpenFIGI tickers → Yahoo adjusted
 close), pre-committed managers **Berkshire Hathaway, Gates Foundation Trust,

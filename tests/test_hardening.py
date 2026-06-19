@@ -122,7 +122,7 @@ def test_pipeline_run_demo_end_to_end():
 
     s = load_settings(holdings_source="demo", price_source="demo", bootstrap_iterations=200)
     verdict = run(s)
-    assert len(verdict.gates) == 4
+    assert len(verdict.gates) == 5  # incl. deflated-Sharpe guard
     assert "excess_cagr" in verdict.headline
 
 
@@ -132,7 +132,7 @@ def test_evaluate_gold_demo_smoke():
     s = load_settings(price_source="demo", bootstrap_iterations=200)
     prices = load_gold_prices(s)
     verdict, diag = evaluate_gold(prices, s)
-    assert len(verdict.gates) == 4
+    assert len(verdict.gates) == 5  # incl. deflated-Sharpe guard
     assert 0.0 <= diag["time_in_market"] <= 1.0
     assert diag["n_trades"] >= 0
 
@@ -143,7 +143,7 @@ def test_evaluate_allocation_demo_smoke():
     s = load_settings(price_source="demo", bootstrap_iterations=200)
     prices = load_alloc_prices(s)
     verdict, _ = evaluate_allocation(prices, s)
-    assert len(verdict.gates) == 4
+    assert len(verdict.gates) == 5  # incl. deflated-Sharpe guard
     assert "strategy_sharpe" in verdict.headline and "strategy_maxdd" in verdict.headline
 
 

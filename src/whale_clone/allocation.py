@@ -278,7 +278,16 @@ def evaluate_allocation(
         {},
     )
 
-    gates = [g1, g2, g3, g4]
+    from .rigor import deflated_sharpe_gate
+
+    g5 = deflated_sharpe_gate(
+        result.returns - result.benchmark_returns,
+        n_strategies_tried=settings.n_strategies_tried,
+        trials_sr_std=settings.trial_sharpe_dispersion,
+        threshold=settings.deflated_sharpe_threshold,
+        periods_per_year=ppy,
+    )
+    gates = [g1, g2, g3, g4, g5]
     return Verdict(all(g.passed for g in gates), gates, headline), {}
 
 

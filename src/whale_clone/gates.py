@@ -34,6 +34,9 @@ class GateConfig:
     max_single_window_share: float = 0.70
     random_seed: int = 1234
     trading_days_per_year: int = 252
+    n_strategies_tried: int = 8
+    deflated_sharpe_threshold: float = 0.95
+    trial_sharpe_dispersion: float = 0.5
 
 
 @dataclass(frozen=True)
@@ -256,11 +259,20 @@ def evaluate_gates(
     headline = _full_sample_metrics(result, cfg)
     headline["excess_cagr"] = headline["strategy_cagr"] - headline["benchmark_cagr"]
 
+    from .rigor import deflated_sharpe_gate
+
     gates = [
         _gate_expectancy(result, gc),
         _gate_walk_forward(result, cfg, gc),
         _gate_robustness(holdings, prices, cfg, gc),
         _gate_benchmark_beating(headline),
+        deflated_sharpe_gate(
+            result.excess_returns,
+            n_strategies_tried=gc.n_strategies_tried,
+            trials_sr_std=gc.trial_sharpe_dispersion,
+            threshold=gc.deflated_sharpe_threshold,
+            periods_per_year=cfg.trading_days_per_year,
+        ),
     ]
     passed = all(g.passed for g in gates)
     return Verdict(passed=passed, gates=gates, headline=headline)

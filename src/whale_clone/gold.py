@@ -137,11 +137,20 @@ def evaluate_gold(prices: pd.Series, settings: Settings) -> tuple[Verdict, dict[
     headline = _full_sample_metrics(result, bc)
     headline["excess_cagr"] = headline["strategy_cagr"] - headline["benchmark_cagr"]
 
+    from .rigor import deflated_sharpe_gate
+
     gates = [
         _gate_expectancy_block(result, target, gc, settings.gold_block_bootstrap_len),
         _gate_walk_forward(result, bc, gc),
         _gate_robustness_lookback(prices, settings, settings.trading_days_per_year),
         _gate_benchmark_beating(headline),
+        deflated_sharpe_gate(
+            result.excess_returns,
+            n_strategies_tried=settings.n_strategies_tried,
+            trials_sr_std=settings.trial_sharpe_dispersion,
+            threshold=settings.deflated_sharpe_threshold,
+            periods_per_year=settings.trading_days_per_year,
+        ),
     ]
     diagnostics = {
         "time_in_market": time_in_market(target),
