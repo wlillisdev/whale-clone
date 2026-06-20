@@ -1,0 +1,50 @@
+name: Publish holdings report
+
+# Regenerates the public Superinvestor Holdings Tracker page after each quarterly
+# 13F deadline and publishes it to GitHub Pages. Pure information product — it
+# reads SEC filings and renders HTML/CSV; it places no orders and makes no edge
+# claim. Enable Pages (Settings -> Pages -> Source: GitHub Actions) to serve it.
+
+on:
+  schedule:
+    - cron: "0 14 17 2,5,8,11 *"  # ~2 days after the 13F deadlines
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: python -m pip install -e .
+      - name: Generate report
+        env:
+          WHALE_END_DATE: "2099-12-31"
+          WHALE_OPENFIGI_API_KEY: ${{ secrets.OPENFIGI_API_KEY }}
+        run: python -m whale_clone.report --refresh --out site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
