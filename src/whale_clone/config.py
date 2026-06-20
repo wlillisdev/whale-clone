@@ -110,6 +110,17 @@ class Settings(BaseSettings):
     )
     alloc_rebalance: str = "Q"  # "M" monthly | "Q" quarterly
 
+    # --- Insider cluster-buying strategy (Form 4) --------------------------
+    insider_source: str = "edgar"  # "edgar" | "demo"
+    insider_universe: list[str] = Field(
+        default_factory=lambda: ["AAPL", "MSFT", "JPM", "XOM", "KO", "PFE", "CAT", "WMT"]
+    )
+    insider_min_buyers: int = 3  # distinct insiders for a cluster
+    insider_require_officer: bool = True  # at least one CEO/CFO/officer
+    insider_min_value: float = 100_000.0  # min total cluster purchase value
+    insider_window_days: int = 30  # cluster window
+    insider_hold_days: int = 126  # ~6-month hold
+
     # --- ML price-predictor experiment -------------------------------------
     # Tests whether an ML model can predict direction from chart features.
     # Strictly walk-forward; judged by the same gates incl. deflated Sharpe.
