@@ -225,6 +225,7 @@ src/whale_clone/
 ├── config.py      # pydantic-settings: pre-committed managers, costs, dates
 ├── data/
 │   ├── holdings.py # Dataroma snapshot + EDGAR history + demo (by filing date)
+│   ├── insiders.py # SEC Form 4 open-market purchases (parser is pure) + demo
 │   └── prices.py   # Stooq/Yahoo adjusted close + benchmark + demo
 ├── portfolio.py    # holdings -> capped target weights (pure)
 ├── costs.py        # commission + slippage on turnover (pure)
@@ -244,8 +245,33 @@ src/whale_clone/
 ├── broker_alpaca.py# Alpaca PAPER broker (optional dep; the only networked client)
 ├── trade.py        # whale-trade CLI: dry-run by default, paper-only execution
 ├── report.py       # whale-report: publishable HTML + CSV holdings tracker (the product)
-└── ml.py           # whale-ml: ML chart-predictor, walk-forward, run through the gates
+├── ml.py           # whale-ml: ML chart-predictor, walk-forward, run through the gates
+└── insiders.py     # whale-insiders: Form 4 cluster-buy signal + basket backtest + gates
 ```
+
+### A fresher smart-money signal: insider cluster buys
+
+13F is 45 days stale. **Form 4** — when a company insider trades their own stock
+— is filed within ~2 business days and names the ticker directly (no CUSIP
+mapping). The tested thesis: when several insiders, at least one of them an
+**officer**, buy on the open market in a short window (a "cluster buy"), the
+stock tends to outperform. `whale-insiders` parses the filings, fires an event
+on the filing date, holds an equal-weight basket entered the **day after** (no
+look-ahead, proven by test) for a fixed horizon, and runs it through the same
+five gates.
+
+```bash
+python -m whale_clone.insiders --demo   # offline synthetic clusters: expect NO edge
+python -m whale_clone.insiders          # real SEC EDGAR Form 4 data
+```
+
+Honest prior before running: the published insider-cluster edge has decayed
+heavily out of sample and what remains lives in small caps that are costly to
+trade — so expect a near-miss at best. Only open-market **purchases** (code `P`)
+are kept; insider *sales* are documented to be uninformative (they happen for
+liquidity, tax, and diversification reasons). The demo run on synthetic noise
+FAILs all five gates, exactly as it should. Run it on real data and let the
+gates — not hope — decide.
 
 ### Can an AI predict trades by "reading the charts"?
 

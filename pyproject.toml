@@ -42,6 +42,7 @@ whale-signal = "whale_clone.paper:main"
 whale-trade = "whale_clone.trade:main"
 whale-report = "whale_clone.report:main"
 whale-ml = "whale_clone.ml:main"
+whale-insiders = "whale_clone.insiders:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/whale_clone"]
