@@ -25,8 +25,8 @@ dependencies = [
 broker = ["alpaca-py>=0.30"]
 dev = [
     "pytest>=8.0",
-    "ruff>=0.4",
-    "mypy>=1.8",
+    "ruff==0.15.8",  # pinned so CI formatting matches local exactly (no drift)
+    "mypy==2.1.0",  # pinned for reproducible type-checking
     "pandas-stubs",
     "types-requests",
 ]

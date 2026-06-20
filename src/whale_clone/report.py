@@ -78,7 +78,7 @@ def _changes_badges(chg: pd.DataFrame, top_n: int) -> str:
         cls = _ACTION_LABEL[str(r["action"])]
         badges.append(
             f'<span class="badge {cls}">{html.escape(str(r["action"]))} '
-            f'{html.escape(str(r["ticker"]))}</span>'
+            f"{html.escape(str(r['ticker']))}</span>"
         )
     return "<div>" + "".join(badges) + "</div>"
 
