@@ -247,7 +247,8 @@ src/whale_clone/
 ├── report.py       # whale-report: publishable HTML + CSV holdings tracker (the product)
 ├── ml.py           # whale-ml: ML chart-predictor, walk-forward, run through the gates
 ├── insiders.py     # whale-insiders: Form 4 cluster-buy signal + basket backtest + gates
-└── vrp.py          # whale-vrp: cash-secured put-writing + ADDED tail-risk gate
+├── vrp.py          # whale-vrp: cash-secured put-writing + ADDED tail-risk gate
+└── digest.py       # whale-digest: curated insider cluster-buy digest (MD/HTML/X thread)
 ```
 
 ### A fresher smart-money signal: insider cluster buys
@@ -333,6 +334,30 @@ python -m whale_clone.report --out site          # real data
 
 `.github/workflows/publish-report.yml` regenerates and publishes it to GitHub
 Pages after each quarterly 13F deadline (enable Pages → Source: GitHub Actions).
+
+### The realistic income angle: a curated insider digest
+
+The research fan-out was blunt about "making money": after every trading strategy
+failed the gates, the one durable business in this space is the **information
+product**, not betting your own capital. The raw SEC data is free (OpenInsider
+dumps Form 4 unanalysed); what nobody sells is a *curated, honest* read. So
+`whale-digest` turns the same Form-4 pipeline into a publishable weekly digest in
+three formats — Markdown (Substack/email), self-contained HTML, and a
+ready-to-post X/Twitter thread (the distribution flywheel).
+
+```bash
+python -m whale_clone.digest --demo --out digest   # offline sample
+python -m whale_clone.digest --out digest           # real Form 4 data
+```
+
+It ranks the week's cluster buys by conviction (distinct buyers, officer
+involvement, dollar size) and bakes in the honest framing on every artifact:
+cluster buys have real academic support (Lakonishok & Lee; Cohen-Malloy-Pomorski
+on *opportunistic* buys; cluster buys ~2× single-buy excess), but the edge has
+decayed and lives in small caps — plus a not-advice disclaimer. **It posts
+nothing**; it produces content for a human to review and publish. Honest ceiling
+for a diligent solo operator: ~$5–30k/yr (finance is the best-monetising
+newsletter niche), not a get-rich path.
 
 ### Paper execution (no live trading, ever)
 
