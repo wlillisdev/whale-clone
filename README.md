@@ -242,8 +242,24 @@ src/whale_clone/
 ├── paper.py        # quarterly clone signal + forward paper-trade log (no orders)
 ├── execution.py    # target weights -> orders; guardrails; DryRunBroker (pure/offline)
 ├── broker_alpaca.py# Alpaca PAPER broker (optional dep; the only networked client)
-└── trade.py        # whale-trade CLI: dry-run by default, paper-only execution
+├── trade.py        # whale-trade CLI: dry-run by default, paper-only execution
+└── report.py       # whale-report: publishable HTML + CSV holdings tracker (the product)
 ```
+
+### The product: a published holdings tracker
+
+The one model with a proven business in this space is the **information product**,
+not running a fund. `whale-report` renders a self-contained HTML page + CSV from
+the verified EDGAR data — current holdings, last-quarter changes (new/add/trim/
+exit), and cross-manager consensus. Sourced fact, no edge claim.
+
+```bash
+python -m whale_clone.report --demo --out site   # offline sample -> site/index.html + holdings.csv
+python -m whale_clone.report --out site          # real data
+```
+
+`.github/workflows/publish-report.yml` regenerates and publishes it to GitHub
+Pages after each quarterly 13F deadline (enable Pages → Source: GitHub Actions).
 
 ### Paper execution (no live trading, ever)
 
