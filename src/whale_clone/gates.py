@@ -23,7 +23,7 @@ import pandas as pd
 
 from .backtest import BacktestConfig, BacktestResult, run_backtest
 from .costs import CostModel
-from .metrics import bootstrap_mean_ci, cagr, sharpe
+from .metrics import bootstrap_mean_ci, cagr, cvar, max_drawdown, sharpe, sortino
 
 
 @dataclass(frozen=True)
@@ -37,6 +37,7 @@ class GateConfig:
     n_strategies_tried: int = 8
     deflated_sharpe_threshold: float = 0.95
     trial_sharpe_dispersion: float = 0.5
+    cvar_alpha: float = 0.95  # tail fraction for the CVaR / expected-shortfall check
 
 
 @dataclass(frozen=True)
@@ -232,6 +233,54 @@ def _gate_robustness(
         passed,
         detail,
         {"variants_beating": float(beats), "variants_total": float(total)},
+    )
+
+
+def gate_tail_risk(result: BacktestResult, cfg: BacktestConfig, gc: GateConfig) -> GateResult:
+    """Tail-risk gate — the guard a Sharpe/bootstrap pipeline structurally lacks.
+
+    A strategy with a beautiful Sharpe can still sit on a catastrophic left tail
+    (selling crash insurance is the canonical example). This gate fails any
+    strategy whose downside is worse than simply holding the benchmark, judged on
+    three one-sided measures the standard gates miss:
+
+    * **Max drawdown** must be no deeper than the benchmark's.
+    * **Sortino** (downside-only risk-adjusted return) must beat the benchmark's.
+    * **CVaR / expected shortfall** (typical loss in the worst tail) must be no
+      worse than the benchmark's.
+    """
+    ppy = cfg.trading_days_per_year
+    s_dd = max_drawdown(result.value)
+    b_dd = max_drawdown(result.benchmark_value)
+    s_sortino = sortino(result.returns, risk_free_annual=cfg.risk_free_annual, periods_per_year=ppy)
+    b_sortino = sortino(
+        result.benchmark_returns, risk_free_annual=cfg.risk_free_annual, periods_per_year=ppy
+    )
+    s_cvar = cvar(result.returns, alpha=gc.cvar_alpha)
+    b_cvar = cvar(result.benchmark_returns, alpha=gc.cvar_alpha)
+    # "Less negative is better" for drawdown and CVaR; higher is better for Sortino.
+    dd_ok = bool(s_dd >= b_dd and not np.isnan(s_dd))
+    sortino_ok = bool(s_sortino > b_sortino and not np.isnan(s_sortino))
+    cvar_ok = bool(s_cvar >= b_cvar and not np.isnan(s_cvar))
+    passed = dd_ok and sortino_ok and cvar_ok
+    detail = (
+        f"Max DD {s_dd:.1%} vs {b_dd:.1%} ({'ok' if dd_ok else 'worse'}); "
+        f"Sortino {s_sortino:.2f} vs {b_sortino:.2f} ({'beats' if sortino_ok else 'loses'}); "
+        f"CVaR{int(gc.cvar_alpha * 100)} {s_cvar:+.2%} vs {b_cvar:+.2%} "
+        f"({'ok' if cvar_ok else 'worse'})."
+    )
+    return GateResult(
+        "Tail-risk (max DD / Sortino / CVaR)",
+        passed,
+        detail,
+        {
+            "strategy_max_dd": s_dd,
+            "benchmark_max_dd": b_dd,
+            "strategy_sortino": s_sortino,
+            "benchmark_sortino": b_sortino,
+            "strategy_cvar": s_cvar,
+            "benchmark_cvar": b_cvar,
+        },
     )
 
 
