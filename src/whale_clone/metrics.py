@@ -62,6 +62,62 @@ def max_drawdown(value: pd.Series) -> float:
     return float(drawdown.min())
 
 
+def downside_deviation(
+    returns: pd.Series, *, target: float = 0.0, periods_per_year: int = TRADING_DAYS
+) -> float:
+    """Annualised downside deviation: RMS of returns below ``target`` only.
+
+    Unlike standard deviation, this ignores upside volatility — the right
+    denominator for strategies (like short-vol) whose risk is one-sided.
+    """
+    r = returns.dropna()
+    if len(r) < 2:
+        return float("nan")
+    downside = np.minimum(r.to_numpy(dtype=float) - target, 0.0)
+    dd = float(np.sqrt((downside**2).mean()))
+    return float(dd * np.sqrt(periods_per_year))
+
+
+def sortino(
+    returns: pd.Series,
+    *,
+    risk_free_annual: float = 0.0,
+    periods_per_year: int = TRADING_DAYS,
+) -> float:
+    """Annualised Sortino ratio: excess return per unit of *downside* deviation.
+
+    Sharpe divides by total volatility and so is blind to negative skew; a
+    high-Sharpe strategy can still have a catastrophic left tail. Sortino only
+    penalises downside, exposing exactly that.
+    """
+    r = returns.dropna()
+    if len(r) < 2:
+        return float("nan")
+    rf = risk_free_annual / periods_per_year
+    excess = r.to_numpy(dtype=float) - rf
+    dd = float(np.sqrt((np.minimum(excess, 0.0) ** 2).mean()))
+    if dd == 0:
+        return float("nan")
+    return float(excess.mean() / dd * np.sqrt(periods_per_year))
+
+
+def cvar(returns: pd.Series, *, alpha: float = 0.95) -> float:
+    """Conditional Value-at-Risk (expected shortfall) of the worst ``1-alpha`` tail.
+
+    Returns the mean of the worst (1-alpha) fraction of period returns — a
+    negative number measuring the *typical* loss in a bad tail event, which a
+    Sharpe/standard-deviation view hides.
+    """
+    data = returns.dropna().to_numpy(dtype=float)
+    if data.size < 2:
+        return float("nan")
+    q = float(np.quantile(data, 1.0 - alpha))
+    tail = data[data <= q]
+    if tail.size == 0:
+        return q
+    return float(tail.mean())
+
+
 @dataclass(frozen=True)
 class BootstrapCI:
     mean: float

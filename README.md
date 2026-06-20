@@ -246,7 +246,8 @@ src/whale_clone/
 ├── trade.py        # whale-trade CLI: dry-run by default, paper-only execution
 ├── report.py       # whale-report: publishable HTML + CSV holdings tracker (the product)
 ├── ml.py           # whale-ml: ML chart-predictor, walk-forward, run through the gates
-└── insiders.py     # whale-insiders: Form 4 cluster-buy signal + basket backtest + gates
+├── insiders.py     # whale-insiders: Form 4 cluster-buy signal + basket backtest + gates
+└── vrp.py          # whale-vrp: cash-secured put-writing + ADDED tail-risk gate
 ```
 
 ### A fresher smart-money signal: insider cluster buys
@@ -272,6 +273,31 @@ are kept; insider *sales* are documented to be uninformative (they happen for
 liquidity, tax, and diversification reasons). The demo run on synthetic noise
 FAILs all five gates, exactly as it should. Run it on real data and let the
 gates — not hope — decide.
+
+### The most defensible edge — and why it forced a new gate
+
+The one strategy from the research fan-out with a real *economic* rationale (not a
+soon-arbitraged anomaly) is harvesting the **volatility risk premium**: index
+implied vol runs persistently above realised vol, so an option *seller* is paid
+to underwrite crash insurance. `whale-vrp` harvests it the robust way — rolling
+**fully cash-secured at-the-money puts** (CBOE PUT-index style), never levered
+VIX-futures short-vol (the thing that vaporised XIV in a single day in 2018).
+
+```bash
+python -m whale_clone.vrp --demo          # offline synthetic data
+python -m whale_clone.vrp                  # real data (index + VIX, or realised-vol proxy)
+```
+
+The catch is the whole lesson: short-vol returns are **negatively skewed with a
+fat left tail** — small steady gains punctuated by rare, violent losses. A
+Sharpe / bootstrap pipeline *blesses* exactly this profile (high Sharpe, tight
+positive CI) while ignoring the steamroller. So this strategy doesn't just get
+run through the five gates — it **added a sixth**: a **tail-risk gate** (in
+`gates.py`, reusable) that fails any strategy whose **max drawdown, Sortino, or
+CVaR (expected shortfall)** is worse than simply holding the benchmark. That gate
+is the real deliverable here: a permanent upgrade that catches a beautiful-Sharpe
+strategy sitting on a catastrophic tail — precisely what this framework exists to
+prevent.
 
 ### Can an AI predict trades by "reading the charts"?
 

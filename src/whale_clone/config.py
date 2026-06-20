@@ -121,6 +121,20 @@ class Settings(BaseSettings):
     insider_window_days: int = 30  # cluster window
     insider_hold_days: int = 126  # ~6-month hold
 
+    # --- Volatility risk premium (cash-secured index put-writing) ----------
+    # The most economically-grounded edge from the research fan-out: you are PAID
+    # to underwrite crash insurance (implied vol runs above realised). Simulated
+    # by rolling fully cash-secured ATM puts, Black-Scholes priced off an implied
+    # vol series. Judged with an ADDED tail-risk gate (max DD / Sortino / CVaR)
+    # because a Sharpe/bootstrap pipeline is blind to the negative-skew left tail.
+    vrp_source: str = "demo"  # "yahoo" | "stooq" | "demo"
+    vrp_index: str = "SPY"  # the underlying we write puts on (= benchmark)
+    vrp_dte_days: int = 21  # option tenor / roll period (~1 month)
+    vrp_moneyness: float = 1.0  # strike / spot (1.0 = at-the-money)
+    vrp_cost_bps: float = 10.0  # round-trip option slippage per roll, on notional
+    vrp_iv_markup: float = 1.3  # IV = trailing realised vol x markup when no VIX
+    vrp_iv_floor: float = 0.10  # minimum annualised implied vol
+
     # --- ML price-predictor experiment -------------------------------------
     # Tests whether an ML model can predict direction from chart features.
     # Strictly walk-forward; judged by the same gates incl. deflated Sharpe.
