@@ -23,10 +23,12 @@ dependencies = [
 
 [project.optional-dependencies]
 broker = ["alpaca-py>=0.30"]
+ml = ["scikit-learn>=1.3"]
 dev = [
     "pytest>=8.0",
     "ruff==0.15.8",  # pinned so CI formatting matches local exactly (no drift)
     "mypy==2.1.0",  # pinned for reproducible type-checking
+    "scikit-learn>=1.3",  # for the ML predictor experiment + its tests
     "pandas-stubs",
     "types-requests",
 ]
@@ -39,6 +41,7 @@ whale-track = "whale_clone.tracker:main"
 whale-signal = "whale_clone.paper:main"
 whale-trade = "whale_clone.trade:main"
 whale-report = "whale_clone.report:main"
+whale-ml = "whale_clone.ml:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/whale_clone"]
