@@ -110,6 +110,15 @@ class Settings(BaseSettings):
     )
     alloc_rebalance: str = "Q"  # "M" monthly | "Q" quarterly
 
+    # --- ML price-predictor experiment -------------------------------------
+    # Tests whether an ML model can predict direction from chart features.
+    # Strictly walk-forward; judged by the same gates incl. deflated Sharpe.
+    ml_instrument: str = "SPY"
+    ml_horizon: int = 1  # predict direction this many days ahead
+    ml_train_min: int = 750  # min training rows before first prediction (~3y)
+    ml_step: int = 21  # retrain/predict block size (~monthly)
+    ml_threshold: float = 0.50  # go long when P(up) exceeds this
+
     # --- Execution (paper-only; dry-run by default) ------------------------
     # Trading is OFF unless both broker_mode="paper" AND execute=True. There is
     # no live broker in this codebase; paper carries no real-money risk.

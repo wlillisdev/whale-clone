@@ -243,8 +243,29 @@ src/whale_clone/
 ├── execution.py    # target weights -> orders; guardrails; DryRunBroker (pure/offline)
 ├── broker_alpaca.py# Alpaca PAPER broker (optional dep; the only networked client)
 ├── trade.py        # whale-trade CLI: dry-run by default, paper-only execution
-└── report.py       # whale-report: publishable HTML + CSV holdings tracker (the product)
+├── report.py       # whale-report: publishable HTML + CSV holdings tracker (the product)
+└── ml.py           # whale-ml: ML chart-predictor, walk-forward, run through the gates
 ```
+
+### Can an AI predict trades by "reading the charts"?
+
+Common intuition: AI should crush trading by reading price graphs. `whale-ml`
+tests it honestly — a gradient-boosted model on technical features, trained
+**strictly walk-forward** (no look-ahead, proven by test), then run through the
+same five gates including the deflated-Sharpe overfitting guard.
+
+```bash
+python -m whale_clone.ml --demo            # on a random walk: expect NO edge
+python -m whale_clone.ml --instrument SPY  # real data
+```
+
+On synthetic random-walk data the verdict is the honest lesson in one screen:
+**~49.8% directional accuracy (a coin flip), all gates FAIL, and ~26% lost to
+trading costs from churn.** Markets are adversarial, near-efficient, and
+non-stationary — unlike image recognition, a pattern that works gets arbitraged
+away the moment it's exploited. Run it on real SPY and judge for yourself; the
+overfitting guard exists precisely to catch a model that looks brilliant
+in-sample and is really fitting noise.
 
 ### The product: a published holdings tracker
 
