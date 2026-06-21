@@ -359,6 +359,10 @@ nothing**; it produces content for a human to review and publish. Honest ceiling
 for a diligent solo operator: ~$5–30k/yr (finance is the best-monetising
 newsletter niche), not a get-rich path.
 
+`.github/workflows/publish-digest.yml` regenerates the digest every Monday and
+commits the ready-to-paste Markdown / HTML / X-thread into `digest/` (with a
+dated archive), so the publishing flywheel runs itself — you just review and post.
+
 ### Paper execution (no live trading, ever)
 
 `whale-trade` turns the quarterly signal into orders against an Alpaca **paper**
