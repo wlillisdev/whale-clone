@@ -127,7 +127,7 @@ class Settings(BaseSettings):
     # by rolling fully cash-secured ATM puts, Black-Scholes priced off an implied
     # vol series. Judged with an ADDED tail-risk gate (max DD / Sortino / CVaR)
     # because a Sharpe/bootstrap pipeline is blind to the negative-skew left tail.
-    vrp_source: str = "demo"  # "yahoo" | "stooq" | "demo"
+    vrp_source: str = "yahoo"  # "yahoo" | "stooq" | "demo" (real data by default)
     vrp_index: str = "SPY"  # the underlying we write puts on (= benchmark)
     vrp_dte_days: int = 21  # option tenor / roll period (~1 month)
     vrp_moneyness: float = 1.0  # strike / spot (1.0 = at-the-money)
