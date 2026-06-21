@@ -1,0 +1,54 @@
+name: Publish insider digest
+
+# Regenerates the curated insider cluster-buy digest every week and commits the
+# ready-to-publish artifacts (Markdown for Substack/email, HTML, and an X/Twitter
+# thread) into digest/ with a dated archive copy. Pure information product — it
+# reads public SEC Form 4 filings and renders content; it places no orders, makes
+# no edge claim, and posts to no external service. A human reviews and publishes.
+
+on:
+  schedule:
+    - cron: "0 13 * * 1"  # every Monday ~13:00 UTC
+  workflow_dispatch:
+    inputs:
+      weeks:
+        description: "Lookback window in weeks"
+        default: "1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-digest
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install
+        run: python -m pip install -e .
+      - name: Generate digest
+        env:
+          WHALE_END_DATE: "2099-12-31"
+        run: |
+          python -m whale_clone.digest --refresh --weeks "${{ github.event.inputs.weeks || '1' }}" --out digest
+          stamp="$(date -u +%Y-%m-%d)"
+          mkdir -p "digest/archive/${stamp}"
+          cp digest/digest.md digest/index.html digest/thread.txt "digest/archive/${stamp}/"
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add digest
+          if git diff --cached --quiet; then
+            echo "No digest changes to commit."
+          else
+            git commit -m "Weekly insider digest ($(date -u +%Y-%m-%d))"
+            git push
+          fi
