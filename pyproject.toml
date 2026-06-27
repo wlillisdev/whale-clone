@@ -45,6 +45,7 @@ whale-ml = "whale_clone.ml:main"
 whale-insiders = "whale_clone.insiders:main"
 whale-vrp = "whale_clone.vrp:main"
 whale-digest = "whale_clone.digest:main"
+whale-system = "whale_clone.system:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/whale_clone"]

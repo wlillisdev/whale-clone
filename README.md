@@ -248,7 +248,8 @@ src/whale_clone/
 ├── ml.py           # whale-ml: ML chart-predictor, walk-forward, run through the gates
 ├── insiders.py     # whale-insiders: Form 4 cluster-buy signal + basket backtest + gates
 ├── vrp.py          # whale-vrp: cash-secured put-writing + ADDED tail-risk gate
-└── digest.py       # whale-digest: curated insider cluster-buy digest (MD/HTML/X thread)
+├── digest.py       # whale-digest: curated insider cluster-buy digest (MD/HTML/X thread)
+└── system.py       # whale-system: combined index+VRP+insider book, vol-targeted, gated
 ```
 
 ### A fresher smart-money signal: insider cluster buys
@@ -274,6 +275,29 @@ are kept; insider *sales* are documented to be uninformative (they happen for
 liquidity, tax, and diversification reasons). The demo run on synthetic noise
 FAILs all five gates, exactly as it should. Run it on real data and let the
 gates — not hope — decide.
+
+### The combined system — the "best bits" in one risk-managed book
+
+Every strategy here failed *alone* on raw return — but that is the wrong test for
+a portfolio. `whale-system` does what a pro actually does: blend the pieces that
+carried signal into one monthly-rebalanced book — an **index core** (beta), a
+**VRP put-write overlay** (the risk-adjusted winner), and an **insider cluster-buy
+tilt** (academic-backed satellite) — then **volatility-target the blend to the
+index's own risk** with a hard leverage cap and an honest financing cost.
+
+```bash
+python -m whale_clone.system --demo          # offline synthetic data
+python -m whale_clone.system                  # real data (leveraged to index vol)
+python -m whale_clone.system --no-leverage    # the plain unlevered blend
+```
+
+The logic is a theorem, not a hope: if the blend's Sharpe beats the index, then
+scaling it to *equal volatility* makes it beat the index on **return** too — that
+is the legitimate way "higher Sharpe" becomes "more money." It is judged by all
+six gates, and the tail-risk gate is decisive here: levering a short-vol book is
+exactly where you blow up, so the gate that watches drawdown/Sortino/CVaR has the
+final say. No window-tuning, no weight-fitting to pass — the verdict stands as
+the data gives it.
 
 ### The most defensible edge — and why it forced a new gate
 

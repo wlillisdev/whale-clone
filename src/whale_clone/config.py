@@ -135,6 +135,22 @@ class Settings(BaseSettings):
     vrp_iv_markup: float = 1.3  # IV = trailing realised vol x markup when no VIX
     vrp_iv_floor: float = 0.10  # minimum annualised implied vol
 
+    # --- Combined system (the "best bits" portfolio) -----------------------
+    # Blend the pieces that actually carried signal into ONE risk-managed book,
+    # rebalanced monthly: an index core (beta), a VRP put-write overlay (the
+    # risk-adjusted winner), and an insider cluster-buy tilt (academic-backed
+    # satellite). The pro move: volatility-target the blend to the index's own
+    # risk with capped leverage, so a higher-Sharpe mix beats the index on
+    # RETURN, not just smoothness. Judged by all gates incl. the tail-risk gate
+    # (levering short-vol is exactly where you blow up). Pre-committed weights;
+    # the robustness gate varies the mix. Set 0.0 vol target to disable leverage.
+    system_w_index: float = 0.50
+    system_w_vrp: float = 0.30
+    system_w_insider: float = 0.20
+    system_vol_target: float = 0.0  # 0 = match the index's realised vol; else annual target
+    system_max_leverage: float = 1.5  # hard cap; levering short-vol is dangerous
+    system_borrow_spread: float = 0.01  # financing cost above risk-free on levered notional
+
     # --- ML price-predictor experiment -------------------------------------
     # Tests whether an ML model can predict direction from chart features.
     # Strictly walk-forward; judged by the same gates incl. deflated Sharpe.
