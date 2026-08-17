@@ -1,0 +1,100 @@
+[
+  {
+    "as_of": "2026-08-14",
+    "run_at": "2026-08-17T13:46:44+00:00",
+    "target": {
+      "AAPL": 0.107,
+      "AMZN": 0.0741,
+      "AXP": 0.0832,
+      "BAC": 0.0447,
+      "BN": 0.0751,
+      "BRK/B": 0.0859,
+      "CAT": 0.0791,
+      "CNI": 0.0723,
+      "DE": 0.0264,
+      "GOOGL": 0.0457,
+      "KO": 0.0527,
+      "MSFT": 0.0651,
+      "QSR": 0.052,
+      "UBER": 0.067,
+      "WM": 0.0696
+    },
+    "trades": [
+      {
+        "action": "NEW",
+        "delta": 0.107,
+        "ticker": "AAPL"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0859,
+        "ticker": "BRK/B"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0832,
+        "ticker": "AXP"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0791,
+        "ticker": "CAT"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0751,
+        "ticker": "BN"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0741,
+        "ticker": "AMZN"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0723,
+        "ticker": "CNI"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0696,
+        "ticker": "WM"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.067,
+        "ticker": "UBER"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0651,
+        "ticker": "MSFT"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0527,
+        "ticker": "KO"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.052,
+        "ticker": "QSR"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0457,
+        "ticker": "GOOGL"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0447,
+        "ticker": "BAC"
+      },
+      {
+        "action": "NEW",
+        "delta": 0.0264,
+        "ticker": "DE"
+      }
+    ]
+  }
+]
