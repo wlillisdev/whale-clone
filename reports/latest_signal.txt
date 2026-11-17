@@ -1,39 +1,39 @@
 ============================================================
 WHALE-CLONE — QUARTERLY SIGNAL (paper / decision only)
 ============================================================
-As of latest filing: 2026-08-14. NO orders placed.
+As of latest filing: 2026-11-16. NO orders placed.
 ------------------------------------------------------------
 Target portfolio:
-  AAPL      10.7%
+  AAPL      12.1%
   BRK/B      8.6%
-  AXP        8.3%
-  CAT        7.9%
+  CNI        8.5%
   BN         7.5%
   AMZN       7.4%
-  CNI        7.2%
-  WM         7.0%
+  AXP        7.4%
+  CAT        7.1%
   UBER       6.7%
   MSFT       6.5%
-  KO         5.3%
+  WM         5.8%
+  KO         5.5%
   QSR        5.2%
-  GOOGL      4.6%
-  BAC        4.5%
-  DE         2.6%
+  GOOGL      4.3%
+  BAC        4.0%
+  DE         3.3%
 ------------------------------------------------------------
 Trades this run:
-  NEW  AAPL      0.0% -> 10.7%
+  NEW  AAPL      0.0% -> 12.1%
   NEW  BRK/B     0.0% ->  8.6%
-  NEW  AXP       0.0% ->  8.3%
-  NEW  CAT       0.0% ->  7.9%
+  NEW  CNI       0.0% ->  8.5%
   NEW  BN        0.0% ->  7.5%
   NEW  AMZN      0.0% ->  7.4%
-  NEW  CNI       0.0% ->  7.2%
-  NEW  WM        0.0% ->  7.0%
+  NEW  AXP       0.0% ->  7.4%
+  NEW  CAT       0.0% ->  7.1%
   NEW  UBER      0.0% ->  6.7%
   NEW  MSFT      0.0% ->  6.5%
-  NEW  KO        0.0% ->  5.3%
+  NEW  WM        0.0% ->  5.8%
+  NEW  KO        0.0% ->  5.5%
   NEW  QSR       0.0% ->  5.2%
-  NEW  GOOGL     0.0% ->  4.6%
-  NEW  BAC       0.0% ->  4.5%
-  NEW  DE        0.0% ->  2.6%
+  NEW  GOOGL     0.0% ->  4.3%
+  NEW  BAC       0.0% ->  4.0%
+  NEW  DE        0.0% ->  3.3%
 ============================================================
